@@ -33,7 +33,6 @@
     "next": "13.5.6",
     "next-auth": "^4.24.5",
     "next-themes": "^0.4.6",
-    "nodemailer": "^6.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sonner": "^2.0.6",
@@ -43,7 +42,6 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.10.0",
-    "@types/nodemailer": "^6.4.17",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "autoprefixer": "^10.4.0",
@@ -55,3 +53,76 @@
     "typescript": "^5.3.0"
   }
 }
+```
+
+After saving the updated `package.json`, please follow these steps to complete the removal of the email service.
+
+### **1. Update Your Packages**
+
+Run the following command in your terminal to remove the old packages from your `node_modules` folder and update your `package-lock.json` file.
+
+```bash
+npm install
+```
+
+---
+
+### **2. Update the Registration Logic**
+
+The file at `src/app/api/register/route.ts` contains the logic that tries to send emails. We need to modify it.
+
+* **Action**: Replace the entire contents of `src/app/api/register/route.ts` with the code below. This new version removes the email-sending calls and automatically activates new users upon registration (`isActive: true`).
+
+```typescript
+// src/app/api/register/route.ts
+
+import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import prisma from '@/lib/prisma';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, email, password } = body;
+
+    if (!name || !email || !password) {
+      return new NextResponse('Missing name, email, or password', { status: 400 });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email },
+    });
+
+    if (existingUser) {
+      return new NextResponse('User with this email already exists', { status: 409 });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        isActive: true, // New users are now active by default
+      },
+    });
+
+    return NextResponse.json({ message: 'User created successfully', user: newUser }, { status: 201 });
+  } catch (error) {
+    console.error('Registration Error:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
+```
+
+---
+
+### **3. Delete Unused Files and Variables**
+
+* **Delete the email utility file**: Delete the file located at `src/lib/email.ts`.
+* **Remove environment variables**:
+    * In your local `.env` file, delete the `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, and `EMAIL_PASS` variables.
+    * In your Railway project, go to the "Variables" tab for your application service and delete these same four variables.
+
+After completing these steps, commit and push your changes to GitHub to deploy the new version. Your application will now register users without sending emai
