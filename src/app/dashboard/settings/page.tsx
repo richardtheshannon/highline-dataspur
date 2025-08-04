@@ -2,18 +2,22 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTheme } from "next-themes" // Step 1: Corrected the import path
+import { useTheme } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Moon, Sun } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useLayoutPreference } from '@/lib/hooks/use-layout-preference';
+import { cn } from "@/lib/utils";
+
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { preference, setPreference } = useLayoutPreference();
 
-  // Step 2: Added a check to ensure the component is mounted on the client
-  // This prevents hydration errors with the theme switcher.
+  // We wait until the component is mounted to render it
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -21,8 +25,11 @@ export default function SettingsPage() {
   const handleThemeToggle = (checked: boolean) => {
     setTheme(checked ? "dark" : "light")
   }
+  
+  const handleLayoutChange = (value: 'left-handed' | 'right-handed') => {
+    setPreference(value);
+  }
 
-  // We wait until the component is mounted to render it
   if (!mounted) {
     return null
   }
@@ -30,7 +37,6 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        {/* Step 3: Updated heading to use theme-aware text colors */}
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-2">
           Manage your application preferences and settings.
@@ -64,6 +70,32 @@ export default function SettingsPage() {
                 />
                 <Moon className="h-4 w-4 text-muted-foreground" />
               </div>
+            </div>
+            
+            {/* New section for layout preference */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="layout-preference" className="text-base font-medium">
+                  Handedness
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose your preferred navigation sidebar position.
+                </p>
+              </div>
+              <RadioGroup
+                value={preference}
+                onValueChange={handleLayoutChange}
+                className="flex items-center space-x-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="left-handed" id="left-handed" />
+                  <Label htmlFor="left-handed">Left-handed</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="right-handed" id="right-handed" />
+                  <Label htmlFor="right-handed">Right-handed</Label>
+                </div>
+              </RadioGroup>
             </div>
           </CardContent>
         </Card>

@@ -54,17 +54,9 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    @apply font-body; /* 1. Set Roboto as the default body font */
+    @apply bg-background text-foreground font-serif; /* Default to Open Sans */
   }
-
-  /* 2. Apply specific fonts to headings */
-  h1, h2, h3 {
-    @apply font-primary; /* Playfair Display */
-  }
-
-  /* 3. Apply secondary font to h4, h5, h6. The .font-secondary utility class is still available from tailwind.config.js */
-  h4, h5, h6 {
-    @apply font-secondary; /* Montserrat */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans; /* Use Ubuntu for all headings */
   }
 }

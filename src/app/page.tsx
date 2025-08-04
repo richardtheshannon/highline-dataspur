@@ -31,7 +31,7 @@ export default function LandingPage() {
         </div>
 
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-          Project Planning & Management
+          Highline DataSpur
         </h1>
         
         <div className="mt-8 flex items-center justify-center gap-4">
@@ -58,9 +58,8 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        <p className="mt-8 text-lg text-muted-foreground">
-          Streamline your workflow, manage tasks, and collaborate with your team
-          all in one place.
+        <p className="mt-8 text-lg text-muted-foreground max-w-[500px]">
+          Highline DataSpur is a unified dashboard that streamlines social media analytics, financial insights, and forecasting through automated reporting and cross-platform comparison.
         </p>
 
       </div>

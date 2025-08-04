@@ -1,40 +1,29 @@
 // src/app/layout.tsx
 
 import type { Metadata } from "next";
-import { Playfair_Display, Montserrat, Roboto, Roboto_Mono } from "next/font/google";
+import { Ubuntu, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 
-// Font configurations remain the same
-const playfairDisplay = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair-display",
-  display: 'swap',
-});
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: 'swap',
-});
-
-const roboto = Roboto({
+// Configure the title font: Ubuntu
+const ubuntu = Ubuntu({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
-  variable: "--font-roboto",
+  variable: "--font-ubuntu",
   display: 'swap',
 });
 
-const robotoMono = Roboto_Mono({
+// Configure the paragraph font: Open Sans
+const openSans = Open_Sans({
   subsets: ["latin"],
-  variable: "--font-roboto-mono",
+  variable: "--font-open-sans",
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "Project Planning App",
+  title: "Highline DataSpur",
   description: "A comprehensive project management application",
 };
 
@@ -47,20 +36,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="h-full">
       <body
         className={cn(
-          // The body remains a full-height flex container
-          "h-full flex flex-col bg-background font-sans antialiased",
-          playfairDisplay.variable,
-          montserrat.variable,
-          roboto.variable,
-          robotoMono.variable
+          "h-full flex flex-col bg-background font-serif antialiased", // Default font will be set in globals.css
+          ubuntu.variable,
+          openSans.variable
         )}
       >
         <Providers>
-            {/* STEP 1: Wrap children in a <main> tag. */}
-            {/* STEP 2: Move the flex-grow classes here. This <main> element will now expand to fill all available space. */}
-            <main className="flex flex-col flex-grow">
-                {children}
-            </main>
+            {children}
             <Toaster />
         </Providers>
       </body>
