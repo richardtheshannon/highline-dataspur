@@ -1,5 +1,8 @@
+// src/app/dashboard/teams/page.tsx
+
 import { prisma } from "@/lib/prisma";
-import UserTable from "./UserTable"; // This will be our new client component
+import UserTable from "./UserTable"; 
+import AddUserForm from "./AddUserForm"; // Import the new form component
 
 // This line forces the page to be rendered dynamically on each request
 export const dynamic = 'force-dynamic';
@@ -39,6 +42,8 @@ export default async function TeamPage() {
       {/* Render the UserTable client component, passing the full user data as a prop */}
       <UserTable users={users} />
       
+      {/* Render the new AddUserForm component below the table */}
+      <AddUserForm />
     </div>
   );
 }

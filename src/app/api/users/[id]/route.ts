@@ -1,11 +1,13 @@
+// src/app/api/users/[id]/route.ts
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import bcrypt from 'bcryptjs';
 
 /**
- * Handles updating a user's information.
- * This function can update name, email, or the isActive status.
+ * Handles updating a user's information (name, email, isActive).
  * - Only Admins can change the 'isActive' status.
  * - Users can update their own name/email.
  * - Admins can update anyone's name/email.
@@ -65,6 +67,53 @@ export async function PATCH(
     console.error("Failed to update user:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
+}
+
+/**
+ * Handles resetting a user's password.
+ * - Only Admins can reset passwords.
+ */
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+    const session = await getServerSession(authOptions);
+
+    // 1. Authorization Check: Ensure user is an Admin
+    if (!session || session.user.role !== 'ADMIN') {
+        return NextResponse.json({ message: "Forbidden: Only admins can reset passwords." }, { status: 403 });
+    }
+
+    try {
+        const userId = params.id;
+        const body = await request.json();
+        const { password } = body;
+
+        // 2. Validation
+        if (!userId) {
+            return new NextResponse('User ID is required', { status: 400 });
+        }
+        if (!password || password.length < 6) {
+            return new NextResponse('Password must be at least 6 characters long', { status: 400 });
+        }
+
+        // 3. Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 4. Update the user's password in the database
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                password: hashedPassword,
+            },
+        });
+
+        return NextResponse.json({ message: 'Password updated successfully' }, { status: 200 });
+
+    } catch (error) {
+        console.error('PASSWORD_RESET_ERROR:', error);
+        return new NextResponse('Internal Server Error', { status: 500 });
+    }
 }
 
 
