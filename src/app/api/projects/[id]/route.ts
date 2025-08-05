@@ -82,13 +82,8 @@ export async function GET(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const isOwnerOrMember =
-      project.ownerId === user.id ||
-      project.members.some((member: MemberWithUser) => member.user.id === user.id);
-
-    if (!isOwnerOrMember) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // The permission check that restricted access to owners or members has been removed.
+    // Any authenticated user can now view any project's details.
 
     const projectWithCleanedData = {
       ...project,
@@ -123,6 +118,7 @@ export async function PUT(
       where: { id: params.id },
     });
 
+    // For security, we'll keep the check that only the project owner can edit.
     if (!project || project.ownerId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden or Project not found" }, { status: 403 });
     }
@@ -176,12 +172,11 @@ export async function DELETE(
             where: { id: params.id },
         });
 
+        // For security, we'll keep the check that only the project owner can delete.
         if (!project || project.ownerId !== session.user.id) {
             return NextResponse.json({ error: "Forbidden or Project not found" }, { status: 403 });
         }
 
-        // Note: Prisma cascading deletes should handle related records.
-        // Ensure your `schema.prisma` is configured correctly for this.
         await prisma.project.delete({
             where: { id: params.id },
         });

@@ -15,26 +15,25 @@ export default async function Dashboard() {
     redirect('/api/auth/signin');
   }
 
-  const userId = session.user.id;
+  // The userId is no longer used for filtering stats.
+  // const userId = session.user.id;
 
-  // Fetch stats
-  const projectCount = await prisma.project.count({ where: { ownerId: userId } });
-  const activeTaskCount = await prisma.task.count({ where: { project: { ownerId: userId }, status: { not: 'COMPLETED' } } });
+  // Fetch stats - The 'where' clauses have been removed to count all projects and tasks.
+  const projectCount = await prisma.project.count();
+  const activeTaskCount = await prisma.task.count({ where: { status: { not: 'COMPLETED' } } });
   
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const completedThisWeekCount = await prisma.task.count({ where: { project: { ownerId: userId }, status: 'COMPLETED', updatedAt: { gte: oneWeekAgo } } });
+  const completedThisWeekCount = await prisma.task.count({ where: { status: 'COMPLETED', updatedAt: { gte: oneWeekAgo } } });
 
-  // Fetch recent activity
+  // Fetch recent activity - The 'where' clauses have been removed here as well.
   const recentProjects = await prisma.project.findMany({
-    where: { ownerId: userId },
     orderBy: { createdAt: 'desc' },
     take: 3,
     select: { id: true, name: true, createdAt: true },
   });
 
   const recentTasks = await prisma.task.findMany({
-    where: { project: { ownerId: userId } },
     orderBy: { createdAt: 'desc' },
     take: 3,
     select: { id: true, title: true, createdAt: true },
@@ -50,7 +49,7 @@ export default async function Dashboard() {
     <>
       <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
       <p className="text-muted-foreground mt-2 mb-8">
-        Welcome back! Here's what's happening with your projects.
+        Welcome back! Here's what's happening across all projects.
       </p>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -62,7 +61,7 @@ export default async function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{projectCount}</div>
             <p className="text-xs text-muted-foreground">
-              Projects owned by you.
+              All projects in the system.
             </p>
           </CardContent>
         </Card>
@@ -75,7 +74,7 @@ export default async function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{activeTaskCount}</div>
             <p className="text-xs text-muted-foreground">
-              Not yet completed.
+              Across all projects.
             </p>
           </CardContent>
         </Card>
@@ -102,7 +101,7 @@ export default async function Dashboard() {
           <CardContent>
             <div className="flex flex-col space-y-4">
               <Button asChild>
-                <Link href="/dashboard/projects/create">
+                <Link href="/dashboard/projects/new">
                   Create New Project
                 </Link>
               </Button>
@@ -137,11 +136,11 @@ export default async function Dashboard() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-gray-900 truncate dark:text-gray-100">
                           {activity.type === 'Project' ? 'New Project:' : 'New Task:'} {activity.title}
                         </p>
-                        <p className="text-sm text-gray-500">
-                          {activity.date.toLocaleDateString()}
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(activity.date).toLocaleDateString()}
                         </p>
                       </div>
                     </li>

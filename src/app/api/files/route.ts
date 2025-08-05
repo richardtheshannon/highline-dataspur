@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const filename = uniqueSuffix + '-' + file.name.replace(/\s/g, '_');
     const filePath = path.join(uploadDir, filename);
-    const publicUrl = `uploads/${projectId}/${filename}`; // Relative path for client-side access
+    const publicUrl = `/uploads/${projectId}/${filename}`; // Relative path for client-side access
 
     await writeFile(filePath, buffer);
 
@@ -112,7 +112,6 @@ export async function GET(request: NextRequest) {
         if (!session?.user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const userId = session.user.id;
 
         const { searchParams } = new URL(request.url);
         const projectId = searchParams.get('projectId');
@@ -121,16 +120,22 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
         }
 
-        const projectWithFiles = await prisma.project.findFirst({
-            where: { id: projectId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
-            include: { files: { orderBy: { createdAt: 'desc' } } }
+        // The permission check has been removed. Now it just fetches files by projectId.
+        const files = await prisma.file.findMany({
+            where: { projectId: projectId },
+            orderBy: { createdAt: 'desc' }
         });
 
-        if (!projectWithFiles) {
-            return NextResponse.json({ error: "Project not found or you do not have permission." }, { status: 404 });
+        // We can add a check to see if the project itself exists, which is good practice.
+        const projectExists = await prisma.project.findUnique({
+            where: { id: projectId }
+        });
+
+        if (!projectExists) {
+            return NextResponse.json({ error: "Project not found." }, { status: 404 });
         }
 
-        return NextResponse.json(projectWithFiles.files);
+        return NextResponse.json(files);
 
     } catch (error) {
         console.error("File fetching error:", error);
@@ -138,7 +143,6 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// --- UPDATED DELETE FUNCTION ---
 export async function DELETE(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -147,9 +151,8 @@ export async function DELETE(request: NextRequest) {
         }
         const userId = session.user.id;
 
-        // Read the fileId from the request body
-        const body = await request.json();
-        const { fileId } = body;
+        const { searchParams } = new URL(request.url);
+        const fileId = searchParams.get('fileId');
 
         if (!fileId) {
             return NextResponse.json({ error: "File ID is required" }, { status: 400 });
@@ -177,7 +180,6 @@ export async function DELETE(request: NextRequest) {
         } catch (error: any) {
             if (error.code !== 'ENOENT') {
                 console.error("Error deleting physical file:", error);
-                // Decide if you want to stop or continue if physical file deletion fails
             }
         }
 
@@ -192,4 +194,3 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json({ error: "Failed to delete file." }, { status: 500 });
     }
 }
-//newresolve
