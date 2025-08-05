@@ -32,7 +32,7 @@ interface Project {
   }
 }
 
-type SortKey = keyof Omit<Project, '_count' | 'owner'> | 'tasks' | 'members' | 'endDate';
+type SortKey = keyof Omit<Project, '_count' | 'owner'> | 'tasks' | 'members' | 'endDate' | 'priority';
 
 // The main component is now a wrapper for the provider
 export default function ProjectsPage() {
@@ -113,8 +113,16 @@ function ProjectsPageContent() {
     );
   }, [projects, searchTerm]);
 
-  // The sorting logic remains the same
+  // The sorting logic has been updated to handle priority correctly
   const sortedAndFilteredProjects = useMemo(() => {
+    // Define the custom order for priorities
+    const priorityOrder: Record<string, number> = {
+        URGENT: 4,
+        HIGH: 3,
+        MEDIUM: 2,
+        LOW: 1
+    };
+
     const sorted = [...filteredProjects].sort((a, b) => {
         let valA: any;
         let valB: any;
@@ -131,6 +139,11 @@ function ProjectsPageContent() {
             case 'endDate':
                 valA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
                 valB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+                break;
+            // Add a specific case for sorting by priority
+            case 'priority':
+                valA = priorityOrder[a.priority] || 0;
+                valB = priorityOrder[b.priority] || 0;
                 break;
             default:
                 valA = a[sortKey as keyof Project];

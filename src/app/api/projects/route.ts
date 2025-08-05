@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"  // Fixed import path
-import { prisma } from "@/lib/prisma"  // Changed to match your prisma export
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { prisma } from "@/lib/prisma"
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
+    // We still check if a user is logged in before allowing them to see any projects.
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // We can also keep this check to ensure the logged-in user exists in the database.
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     })
@@ -19,13 +21,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // The 'where' clause has been removed from this query.
+    // It will now fetch all projects, regardless of owner or membership.
     const projects = await prisma.project.findMany({
-      where: {
-        OR: [
-          { ownerId: user.id },
-          { members: { some: { userId: user.id } } }
-        ]
-      },
       include: {
         owner: {
           select: { id: true, name: true, email: true }
