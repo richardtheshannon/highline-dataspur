@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { LayoutGrid, List, ArrowUpDown } from "lucide-react"
+import { ViewPreferenceProvider, useViewPreference } from "@/lib/hooks/use-view-preference"
 
 // The Project interface remains the same
 interface Project {
@@ -31,20 +32,28 @@ interface Project {
   }
 }
 
-// Step 1: Define a type for our sortable keys
 type SortKey = keyof Omit<Project, '_count' | 'owner'> | 'tasks' | 'members' | 'endDate';
 
-
+// The main component is now a wrapper for the provider
 export default function ProjectsPage() {
+  return (
+    <ViewPreferenceProvider>
+      <ProjectsPageContent />
+    </ViewPreferenceProvider>
+  )
+}
+
+// All the original page logic is moved into this new component
+function ProjectsPageContent() {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
+  // State for view mode is now managed by our custom hook
+  const { preference, setPreference } = useViewPreference();
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Step 2: Add state for sorting
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -104,7 +113,7 @@ export default function ProjectsPage() {
     );
   }, [projects, searchTerm]);
 
-  // Step 3: Add sorting logic
+  // The sorting logic remains the same
   const sortedAndFilteredProjects = useMemo(() => {
     const sorted = [...filteredProjects].sort((a, b) => {
         let valA: any;
@@ -120,7 +129,6 @@ export default function ProjectsPage() {
                 valB = b._count.members;
                 break;
             case 'endDate':
-                // Handle null dates by pushing them to the end
                 valA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
                 valB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
                 break;
@@ -234,7 +242,7 @@ export default function ProjectsPage() {
     </div>
   );
 
-  // Step 4: Update Table View to be sortable
+  // The Table View remains the same
   const ProjectsTableView = ({ projects }: { projects: Project[] }) => {
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -296,7 +304,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header remains the same */}
+      {/* Header is updated to use the context state */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Projects</h2>
@@ -309,10 +317,10 @@ export default function ProjectsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full md:w-64"
           />
-          <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
+          <Button variant={preference === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setPreference('card')}>
             <LayoutGrid className="h-4 w-4" />
           </Button>
-          <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
+          <Button variant={preference === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setPreference('table')}>
             <List className="h-4 w-4" />
           </Button>
           <Link href="/dashboard/projects/new">
@@ -321,7 +329,7 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* Step 5: Conditional Rendering now uses sortedAndFilteredProjects */}
+      {/* Conditional Rendering now uses the context state */}
       {sortedAndFilteredProjects.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
@@ -335,7 +343,7 @@ export default function ProjectsPage() {
         </Card>
       ) : (
         <div>
-          {viewMode === 'card' ? (
+          {preference === 'card' ? (
             <ProjectsCardView projects={sortedAndFilteredProjects} />
           ) : (
             <ProjectsTableView projects={sortedAndFilteredProjects} />
