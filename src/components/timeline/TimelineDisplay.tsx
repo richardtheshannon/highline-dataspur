@@ -1,6 +1,7 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import TimelineEventModal from './TimelineEventModal'
 
 interface TimelineEvent {
   id: string
@@ -15,9 +16,16 @@ interface TimelineEvent {
 
 interface TimelineDisplayProps {
   timelineEvents: TimelineEvent[]
+  onEventsUpdate?: () => void
 }
 
-const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents }) => {
+const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEventsUpdate }) => {
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null)
+  const [modalMode, setModalMode] = useState<'view' | 'edit'>('view')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [events, setEvents] = useState(timelineEvents)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -50,7 +58,84 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents }) => 
     return colorMap[type] || colorMap.default
   }
 
-  if (!timelineEvents || timelineEvents.length === 0) {
+  const handleView = (event: TimelineEvent) => {
+    setSelectedEvent(event)
+    setModalMode('view')
+    setIsModalOpen(true)
+  }
+
+  const handleEdit = (event: TimelineEvent) => {
+    setSelectedEvent(event)
+    setModalMode('edit')
+    setIsModalOpen(true)
+  }
+
+  const handleDelete = async (eventId: string) => {
+    if (deleteConfirm !== eventId) {
+      setDeleteConfirm(eventId)
+      // Auto-reset confirmation after 3 seconds
+      setTimeout(() => setDeleteConfirm(null), 3000)
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/timeline/events/${eventId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete timeline event')
+      }
+
+      // Update local state
+      setEvents(events.filter(e => e.id !== eventId))
+      setDeleteConfirm(null)
+      
+      // Notify parent component if callback provided
+      if (onEventsUpdate) {
+        onEventsUpdate()
+      }
+    } catch (error) {
+      console.error('Error deleting timeline event:', error)
+      alert('Failed to delete timeline event')
+    }
+  }
+
+  const handleSave = async (updatedEvent: TimelineEvent) => {
+    try {
+      const response = await fetch(`/api/timeline/events/${updatedEvent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: updatedEvent.title,
+          description: updatedEvent.description,
+          date: updatedEvent.date,
+          type: updatedEvent.type
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update timeline event')
+      }
+
+      const savedEvent = await response.json()
+      
+      // Update local state
+      setEvents(events.map(e => e.id === savedEvent.id ? savedEvent : e))
+      
+      // Notify parent component if callback provided
+      if (onEventsUpdate) {
+        onEventsUpdate()
+      }
+    } catch (error) {
+      console.error('Error updating timeline event:', error)
+      throw error
+    }
+  }
+
+  if (!events || events.length === 0) {
     return (
       <div className="form-section">
         <h3 className="form-section-title">
@@ -68,58 +153,97 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents }) => 
   }
 
   // Sort events by date
-  const sortedEvents = [...timelineEvents].sort((a, b) => 
+  const sortedEvents = [...events].sort((a, b) => 
     new Date(a.date).getTime() - new Date(b.date).getTime()
   )
 
   return (
-    <div className="form-section">
-      <h3 className="form-section-title">
-        <span className="material-symbols-outlined">timeline</span>
-        Project Timeline Events ({timelineEvents.length})
-      </h3>
-      
-      <div className="timeline-events-container">
-        {sortedEvents.map((event, index) => (
-          <div key={event.id} className="timeline-event-item">
-            <div className="timeline-event-connector">
-              <div className={`timeline-event-dot ${getEventTypeColor(event.type)}`}>
-                <span className="material-symbols-outlined timeline-event-icon">
-                  {getEventTypeIcon(event.type)}
-                </span>
+    <>
+      <div className="form-section">
+        <h3 className="form-section-title">
+          <span className="material-symbols-outlined">timeline</span>
+          Project Timeline Events ({events.length})
+        </h3>
+        
+        <div className="timeline-events-container">
+          {sortedEvents.map((event, index) => (
+            <div key={event.id} className="timeline-event-item">
+              <div className="timeline-event-connector">
+                <div className={`timeline-event-dot ${getEventTypeColor(event.type)}`}>
+                  <span className="material-symbols-outlined timeline-event-icon">
+                    {getEventTypeIcon(event.type)}
+                  </span>
+                </div>
+                {index < sortedEvents.length - 1 && (
+                  <div className="timeline-event-line"></div>
+                )}
               </div>
-              {index < sortedEvents.length - 1 && (
-                <div className="timeline-event-line"></div>
-              )}
-            </div>
-            
-            <div className="timeline-event-content">
-              <div className="timeline-event-header">
-                <h4 className="timeline-event-title">{event.title}</h4>
+              
+              <div className="timeline-event-content">
+                <div className="timeline-event-header">
+                  <h4 className="timeline-event-title">{event.title}</h4>
+                  <div className="timeline-event-actions">
+                    <button
+                      onClick={() => handleView(event)}
+                      className="timeline-action-btn timeline-action-view"
+                      title="View event details"
+                    >
+                      <span className="material-symbols-outlined">visibility</span>
+                    </button>
+                    <button
+                      onClick={() => handleEdit(event)}
+                      className="timeline-action-btn timeline-action-edit"
+                      title="Edit event"
+                    >
+                      <span className="material-symbols-outlined">edit</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className={`timeline-action-btn timeline-action-delete ${deleteConfirm === event.id ? 'confirm-delete' : ''}`}
+                      title={deleteConfirm === event.id ? 'Click again to confirm' : 'Delete event'}
+                    >
+                      <span className="material-symbols-outlined">
+                        {deleteConfirm === event.id ? 'delete_forever' : 'delete'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                
                 <div className="timeline-event-date">
                   {formatDate(event.date)}
                 </div>
-              </div>
-              
-              {event.description && (
-                <p className="timeline-event-description">
-                  {event.description}
-                </p>
-              )}
-              
-              <div className="timeline-event-meta">
-                <span className="timeline-event-type">
-                  {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
-                </span>
-                <span className="timeline-event-created">
-                  Added {new Date(event.createdAt).toLocaleDateString()}
-                </span>
+                
+                {event.description && (
+                  <p className="timeline-event-description">
+                    {event.description}
+                  </p>
+                )}
+                
+                <div className="timeline-event-meta">
+                  <span className="timeline-event-type">
+                    {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                  </span>
+                  <span className="timeline-event-created">
+                    Added {new Date(event.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+
+      <TimelineEventModal
+        event={selectedEvent}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setSelectedEvent(null)
+        }}
+        onSave={handleSave}
+        mode={modalMode}
+      />
+    </>
   )
 }
 

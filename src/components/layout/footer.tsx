@@ -31,8 +31,10 @@ export default function Footer() {
     if (footer) {
       if (newState) {
         footer.classList.add('footer-fixed')
+        document.body.classList.add('has-fixed-footer')
       } else {
         footer.classList.remove('footer-fixed')
+        document.body.classList.remove('has-fixed-footer')
       }
     }
   }
@@ -56,6 +58,7 @@ export default function Footer() {
       const footer = document.querySelector('.footer')
       if (footer && isFixed) {
         footer.classList.add('footer-fixed')
+        document.body.classList.add('has-fixed-footer')
       }
     }
   }, [])

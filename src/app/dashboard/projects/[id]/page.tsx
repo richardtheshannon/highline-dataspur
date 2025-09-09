@@ -223,28 +223,6 @@ export default function ProjectDetailPage() {
                   </div>
                 )}
                 
-                {project.website && (
-                  <div className="detail-item">
-                    <h4 className="form-label">Website</h4>
-                    <a 
-                      href={project.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="detail-link"
-                    >
-                      {project.website}
-                      <span className="material-symbols-outlined">open_in_new</span>
-                    </a>
-                  </div>
-                )}
-                
-                {project.projectValue && (
-                  <div className="detail-item">
-                    <h4 className="form-label">Project Value</h4>
-                    <p className="detail-value detail-value-currency">${project.projectValue.toLocaleString()}</p>
-                  </div>
-                )}
-                
                 <div className="detail-item">
                   <h4 className="form-label">Owner</h4>
                   <div className="owner-info">
@@ -416,7 +394,13 @@ export default function ProjectDetailPage() {
           {/* Right Column - 2/3 */}
           <div className="main-content-right">
             {/* Timeline Events Section */}
-            <TimelineDisplay timelineEvents={project.timelineEvents || []} />
+            <TimelineDisplay 
+              timelineEvents={project.timelineEvents || []} 
+              onEventsUpdate={() => {
+                // Refresh the project data when timeline events change
+                window.location.reload()
+              }}
+            />
           </div>
         </div>
       </div>

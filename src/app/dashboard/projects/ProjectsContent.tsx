@@ -227,22 +227,23 @@ export default function ProjectsContent() {
   }
 
   return (
-    <div className="safe-margin">
-      <div className="create-project-container">
-        {/* Header with Create Button */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="create-project-title">Projects</h1>
-            <p className="create-project-subtitle">Manage and track all your projects</p>
-          </div>
-          <button 
-            onClick={() => router.push('/dashboard/projects/new')}
-            className="form-btn form-btn-primary flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined">add</span>
-            New Project
-          </button>
+    <div className="safe-margin projects-page">
+      {/* Header with Create Button - Full width */}
+      <div className="projects-header">
+        <div>
+          <h1 className="create-project-title">Projects</h1>
+          <p className="create-project-subtitle">Manage and track all your projects</p>
         </div>
+        <button 
+          onClick={() => router.push('/dashboard/projects/new')}
+          className="form-btn form-btn-primary flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined">add</span>
+          New Project
+        </button>
+      </div>
+      
+      <div className="create-project-container">
 
         {/* Statistics Cards */}
         <div className="form-section">
@@ -314,7 +315,9 @@ export default function ProjectsContent() {
                 <option value="design">Design</option>
                 <option value="marketing">Marketing</option>
                 <option value="research">Research</option>
-                <option value="consulting">Consulting</option>
+                <option value="consulting">Consulting/Other</option>
+                <option value="web_development">Web Development</option>
+                <option value="mobile_app">Mobile App</option>
               </select>
             </div>
             <div className="filter-search">

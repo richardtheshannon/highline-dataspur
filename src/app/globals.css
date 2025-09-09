@@ -301,6 +301,7 @@ body {
 
 .main-menu-sidebar.expanded {
     width: 25%;
+    max-width: 250px;
     background: var(--bg-secondary);
     border-left: 1px solid var(--border-color);
 }
@@ -564,7 +565,7 @@ body {
     
     .main-menu-sidebar.expanded {
         width: 65%;
-        max-width: 350px;
+        max-width: 250px;
     }
 
     .nav-circle {
@@ -642,6 +643,35 @@ body {
     justify-content: stretch !important;
     text-align: left !important;
     display: block !important;
+}
+
+/* Projects page specific layout */
+.safe-margin.projects-page {
+    display: block !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    text-align: left !important;
+    width: 100%;
+}
+
+.projects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+/* Mobile responsive layout for projects header */
+@media (max-width: 768px) {
+    .projects-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .projects-header button {
+        align-self: flex-start;
+    }
 }
 
 .create-project-container {
@@ -1448,6 +1478,16 @@ body {
     z-index: 50 !important;
     background: var(--bg-secondary) !important;
     border-top: 1px solid var(--border-color) !important;
+}
+
+/* Add padding to body when footer is fixed */
+body.has-fixed-footer {
+    padding-bottom: 80px !important; /* 60px footer height + 20px extra space */
+}
+
+/* Ensure content area respects the padding */
+body.has-fixed-footer .content {
+    margin-bottom: 0 !important;
 }
 
 /* Timeline Generation Styles */
@@ -4281,4 +4321,248 @@ body {
 .compact-mode .project-detail-actions .form-btn {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
+}
+
+/* Timeline Event Management Styles */
+.timeline-event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.timeline-event-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.timeline-action-btn {
+  padding: 0.25rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-action-btn:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+}
+
+.timeline-action-btn .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.timeline-action-view:hover {
+  border-color: #3b82f6;
+}
+
+.timeline-action-view:hover .material-symbols-outlined {
+  color: #3b82f6;
+}
+
+.timeline-action-edit:hover {
+  border-color: #10b981;
+}
+
+.timeline-action-edit:hover .material-symbols-outlined {
+  color: #10b981;
+}
+
+.timeline-action-delete:hover {
+  border-color: #ef4444;
+}
+
+.timeline-action-delete:hover .material-symbols-outlined {
+  color: #ef4444;
+}
+
+.timeline-action-delete.confirm-delete {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  animation: pulse-delete 0.5s ease;
+}
+
+.timeline-action-delete.confirm-delete .material-symbols-outlined {
+  color: #ef4444;
+}
+
+@keyframes pulse-delete {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Timeline Event Modal Styles */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: var(--bg-tertiary);
+}
+
+.modal-close .material-symbols-outlined {
+  font-size: 24px;
+  color: var(--text-secondary);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Timeline Event View Styles */
+.timeline-event-view-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.timeline-event-view-icon {
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  font-size: 32px;
+  color: var(--text-primary);
+}
+
+.timeline-event-view-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.timeline-event-view-date {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.timeline-event-view-section {
+  margin-bottom: 1.5rem;
+}
+
+.timeline-event-view-section:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-event-view-description {
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.timeline-event-type-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Timeline Event Form Styles */
+.timeline-event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Mobile Responsive Timeline Actions */
+@media (max-width: 768px) {
+  .modal-container {
+    width: 95%;
+    max-height: 95vh;
+  }
 }
