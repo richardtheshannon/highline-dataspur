@@ -26,12 +26,13 @@ const navItems: NavItem[] = [
   {
     title: 'Projects',
     icon: 'folder_open',
+    href: '/dashboard/projects',
+  },
+  {
+    title: 'APIs',
+    icon: 'api',
     subItems: [
-      { title: 'All Projects', icon: 'view_list', href: '/dashboard/projects' },
-      { title: 'Create Project', icon: 'add_circle', href: '/dashboard/projects/new' },
-      { title: 'Active Projects', icon: 'trending_up', href: '/dashboard/projects?status=active' },
-      { title: 'Completed Projects', icon: 'task_alt', href: '/dashboard/projects?status=completed' },
-      { title: 'On Hold', icon: 'pause_circle', href: '/dashboard/projects?status=on_hold' },
+      { title: 'Google AdWords', icon: 'ads_click', href: '/dashboard/apis/google-adwords' },
     ],
   },
 ]
@@ -45,6 +46,9 @@ export default function Sidebar() {
   const [showUserModal, setShowUserModal] = useState(false)
   const [modalView, setModalView] = useState<ModalView>('menu')
   const [theme, setTheme] = useState<Theme>('dark')
+  const [accentColor, setAccentColor] = useState('#FF6B6B')
+  const [customHex, setCustomHex] = useState('#FF6B6B')
+  const [showColorPicker, setShowColorPicker] = useState(false)
   const router = useRouter()
 
   // Load sidebar state from localStorage on component mount
@@ -56,7 +60,7 @@ export default function Sidebar() {
     }
   }, [])
 
-  // Load and apply theme on mount
+  // Load and apply theme and accent color on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme | null
     if (savedTheme) {
@@ -64,6 +68,14 @@ export default function Sidebar() {
       applyTheme(savedTheme)
     } else {
       applyTheme('dark')
+    }
+    
+    // Load saved accent color
+    const savedAccentColor = localStorage.getItem('accentColor')
+    if (savedAccentColor) {
+      setAccentColor(savedAccentColor)
+      setCustomHex(savedAccentColor)
+      applyAccentColor(savedAccentColor)
     }
   }, [])
 
@@ -92,6 +104,43 @@ export default function Sidebar() {
     setTheme(newTheme)
     localStorage.setItem('theme', newTheme)
     applyTheme(newTheme)
+  }
+
+  const applyAccentColor = (color: string) => {
+    const root = document.documentElement
+    root.style.setProperty('--accent', color)
+    root.style.setProperty('--accent-hover', adjustColorBrightness(color, -20))
+    root.style.setProperty('--accent-light', adjustColorBrightness(color, 40))
+  }
+
+  const adjustColorBrightness = (color: string, percent: number) => {
+    const num = parseInt(color.replace('#', ''), 16)
+    const amt = Math.round(2.55 * percent)
+    const R = (num >> 16) + amt
+    const G = (num >> 8 & 0x00FF) + amt
+    const B = (num & 0x0000FF) + amt
+    return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+      (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+      (B < 255 ? B < 1 ? 0 : B : 255))
+      .toString(16).slice(1)
+  }
+
+  const handleAccentColorChange = (color: string) => {
+    setAccentColor(color)
+    setCustomHex(color)
+    localStorage.setItem('accentColor', color)
+    applyAccentColor(color)
+    setShowColorPicker(false)
+  }
+
+  const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCustomHex(value)
+    
+    // Validate hex color
+    if (/^#[0-9A-F]{6}$/i.test(value)) {
+      handleAccentColorChange(value)
+    }
   }
 
   const toggleMenu = () => {
@@ -135,7 +184,7 @@ export default function Sidebar() {
       {showUserModal && (
         <>
           <div 
-            className="modal-backdrop"
+            className="user-modal-backdrop"
             onClick={() => setShowUserModal(false)}
           />
           <div className="user-modal">
@@ -236,16 +285,54 @@ export default function Sidebar() {
                   
                   <div className="settings-section">
                     <h3>Accent Color</h3>
-                    <div className="color-options">
-                      <button className="color-option" style={{background: '#007AFF'}}></button>
-                      <button className="color-option" style={{background: '#34C759'}}></button>
-                      <button className="color-option" style={{background: '#FF3B30'}}></button>
-                      <button className="color-option" style={{background: '#FF9500'}}></button>
-                      <button className="color-option" style={{background: '#AF52DE'}}></button>
-                      <button className="color-option" style={{background: '#FFCC00'}}></button>
-                      <button className="color-option active" style={{background: '#FF6B6B'}}></button>
-                      <button className="color-option" style={{background: '#4ECDC4'}}></button>
+                    <div className="color-picker-trigger">
+                      <button 
+                        className="accent-color-btn"
+                        style={{backgroundColor: accentColor}}
+                        onClick={() => setShowColorPicker(!showColorPicker)}
+                        title={`Current color: ${accentColor}`}
+                      >
+                        <span className="material-symbols-outlined">palette</span>
+                        <span className="color-hex">{accentColor}</span>
+                      </button>
                     </div>
+                    
+                    {showColorPicker && (
+                      <div className="custom-color-picker">
+                        <div className="color-picker-header">
+                          <h4>Custom Color</h4>
+                          <button 
+                            className="color-picker-close"
+                            onClick={() => setShowColorPicker(false)}
+                          >
+                            <span className="material-symbols-outlined">close</span>
+                          </button>
+                        </div>
+                        <div className="color-picker-content">
+                          <input
+                            type="color"
+                            value={accentColor}
+                            onChange={(e) => handleAccentColorChange(e.target.value)}
+                            className="color-picker-input"
+                          />
+                          <div className="hex-input-container">
+                            <label htmlFor="hex-input">Hex Color:</label>
+                            <input
+                              type="text"
+                              id="hex-input"
+                              value={customHex}
+                              onChange={handleHexInputChange}
+                              className="hex-input"
+                              placeholder="#FF6B6B"
+                              maxLength={7}
+                            />
+                          </div>
+                          <div className="color-preview" style={{backgroundColor: accentColor}}>
+                            <span>Preview</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="settings-section">
@@ -276,15 +363,6 @@ export default function Sidebar() {
                   </div>
                   
                   <div className="settings-section">
-                    <h3>Font Size</h3>
-                    <div className="font-size-selector">
-                      <button className="font-size-option">A-</button>
-                      <button className="font-size-option active">A</button>
-                      <button className="font-size-option">A+</button>
-                    </div>
-                  </div>
-                  
-                  <div className="settings-section">
                     <h3>Sidebar</h3>
                     <div className="display-settings">
                       <div className="setting-item">
@@ -305,7 +383,7 @@ export default function Sidebar() {
                   </div>
                   
                   <div className="settings-actions">
-                    <button className="btn-reset">Reset to Defaults</button>
+                    <button className="form-btn form-btn-primary">Reset to Defaults</button>
                   </div>
                 </div>
               )}
