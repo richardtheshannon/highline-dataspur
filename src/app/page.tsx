@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
 import Footer from '@/components/layout/footer'
@@ -10,6 +12,17 @@ import OverdueEvents from '@/components/dashboard/OverdueEvents'
 
 export default function Home() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  // Handle authentication redirect
+  useEffect(() => {
+    if (status === 'loading') return // Still loading
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+  }, [session, status, router])
 
   useEffect(() => {
     const handleSidebarToggle = () => {
@@ -31,6 +44,23 @@ export default function Home() {
       return () => observer.disconnect()
     }
   }, [])
+
+  // Show loading while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loading-state">
+          <span className="material-symbols-outlined loading-icon">hourglass_empty</span>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render content if not authenticated
+  if (!session) {
+    return null
+  }
 
   return (
     <div className="min-h-screen">

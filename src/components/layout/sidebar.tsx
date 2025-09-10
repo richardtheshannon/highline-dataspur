@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
 
 interface SubNavItem {
   title: string
@@ -29,6 +30,11 @@ const navItems: NavItem[] = [
     href: '/dashboard/projects',
   },
   {
+    title: 'User Management',
+    icon: 'people',
+    href: '/dashboard/user-management',
+  },
+  {
     title: 'APIs',
     icon: 'api',
     subItems: [
@@ -50,6 +56,7 @@ export default function Sidebar() {
   const [customHex, setCustomHex] = useState('#FF6B6B')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const router = useRouter()
+  const { data: session } = useSession()
 
   // Load sidebar state from localStorage on component mount
   useEffect(() => {
@@ -178,6 +185,17 @@ export default function Sidebar() {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await signOut({ 
+        callbackUrl: '/auth/signin',
+        redirect: true 
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
+
   return (
     <>
       {/* User Modal Overlay */}
@@ -215,8 +233,13 @@ export default function Sidebar() {
                       <span className="material-symbols-outlined">account_circle</span>
                     </div>
                     <div className="user-info">
-                      <h3>John Doe</h3>
-                      <p>john.doe@example.com</p>
+                      <h3>{session?.user?.name || 'User'}</h3>
+                      <p>{session?.user?.email || 'No email'}</p>
+                      {session?.user?.role && (
+                        <span className={`role-badge role-${session.user.role.toLowerCase()}`}>
+                          {session.user.role}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="user-menu-section">
@@ -248,7 +271,7 @@ export default function Sidebar() {
                       <span>Help & Support</span>
                     </button>
                     <div className="user-menu-divider"></div>
-                    <button className="user-menu-item logout">
+                    <button className="user-menu-item logout" onClick={handleLogout}>
                       <span className="material-symbols-outlined">logout</span>
                       <span>Sign Out</span>
                     </button>
@@ -415,7 +438,7 @@ export default function Sidebar() {
             </button>
           </div>
         )}
-        <button className="header-logout">
+        <button className="header-logout" onClick={handleLogout}>
           <span className="material-symbols-outlined">logout</span>
         </button>
       </div>

@@ -1,8 +1,8 @@
 import NextAuth, { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaClient, UserRole } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { UserRole } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -13,27 +13,44 @@ const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email) {
+        if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials')
           return null
         }
 
         try {
-          // For development, we'll use the test user
+          console.log('Attempting to find user:', credentials.email)
+          
+          // Find user by email
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           })
 
-          if (user) {
-            return {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              role: user.role as UserRole,
-            }
+          console.log('User found:', !!user, user ? { id: user.id, email: user.email, hasPassword: !!user.password } : 'No user')
+
+          if (!user || !user.password) {
+            console.log('User not found or no password')
+            return null
           }
-          return null
+
+          // Verify password
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+          console.log('Password valid:', isPasswordValid)
+          
+          if (!isPasswordValid) {
+            console.log('Invalid password')
+            return null
+          }
+
+          console.log('Authentication successful for user:', user.email)
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role as UserRole,
+          }
         } catch (error) {
-          console.error('Auth error:', error)
+          console.error('Auth error details:', error)
           return null
         }
       }
@@ -41,6 +58,10 @@ const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
+  },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
   },
   callbacks: {
     async jwt({ token, user }) {
