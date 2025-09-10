@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start -p $PORT -H 0.0.0.0",
-    "start:prod": "npx prisma migrate deploy && next start -p $PORT -H 0.0.0.0",
+    "start:prod": "npx prisma migrate deploy && node seed-production.js && next start -p $PORT -H 0.0.0.0",
     "start:railway": "next start -p $PORT -H 0.0.0.0",
     "lint": "next lint",
     "db:push": "prisma db push --accept-data-loss",
@@ -16,6 +16,7 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate && prisma generate --no-engine",
     "db:reset": "prisma migrate reset --force",
+    "db:seed": "node seed-production.js",
     "dev:fresh": "rm -rf .next && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
