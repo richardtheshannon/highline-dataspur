@@ -5365,7 +5365,7 @@ body.has-fixed-footer .content {
 }
 
 .auth-logo-image {
-  max-width: 200px;
+  max-width: 350px;
   height: auto;
   width: auto;
   object-fit: contain;
@@ -5452,7 +5452,7 @@ body.has-fixed-footer .content {
 .auth-button:hover:not(:disabled) {
   background: var(--accent-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 8px 25px rgba(49, 92, 77, 0.3);
 }
 
 .auth-button:disabled {
@@ -5563,7 +5563,7 @@ body.has-fixed-footer .content {
   }
 
   .auth-logo-image {
-    max-width: 160px;
+    max-width: 280px;
   }
 
   .auth-title {
@@ -6215,4 +6215,253 @@ body.has-fixed-footer .content {
 
 :root[data-theme="light"] .user-card:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   CHART STYLES
+   ============================================ */
+
+.chart-container {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.chart-container:hover {
+  box-shadow: 0 8px 24px var(--shadow);
+  transform: translateY(-2px);
+}
+
+.chart-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.chart-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.chart-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  opacity: 0.8;
+}
+
+.chart-insights {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.insight-card {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.insight-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* Dark mode chart enhancements */
+:root[data-theme="dark"] .chart-container {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .chart-container:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Light mode chart enhancements */
+:root[data-theme="light"] .chart-container {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme="light"] .chart-container:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive chart styles */
+@media (max-width: 768px) {
+  .chart-container {
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+  
+  .chart-title {
+    font-size: 1.25rem;
+  }
+  
+  .insight-cards {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* ============================================
+   SPEND PERFORMANCE CHART STYLES
+   ============================================ */
+
+.spend-performance-container {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-top: 2rem;
+  box-shadow: 0 4px 12px var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.spend-performance-container:hover {
+  box-shadow: 0 8px 24px var(--shadow);
+  transform: translateY(-2px);
+}
+
+.platforms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.platform-chart {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.platform-chart:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.platform-chart-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.platform-icon {
+  font-size: 1.5rem;
+}
+
+.platform-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.platform-metrics {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.metric-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.performance-insights {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.insight-summary h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.insight-summary ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.insight-summary li {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.insight-summary li::before {
+  content: '•';
+  color: var(--accent);
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+/* Dark mode spend performance enhancements */
+:root[data-theme="dark"] .spend-performance-container {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .spend-performance-container:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Light mode spend performance enhancements */
+:root[data-theme="light"] .spend-performance-container {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme="light"] .spend-performance-container:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive spend performance chart */
+@media (max-width: 768px) {
+  .platforms-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .spend-performance-container {
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .platform-chart {
+    padding: 1rem;
+  }
+  
+  .platform-metrics {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 }

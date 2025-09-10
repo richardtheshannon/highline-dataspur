@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
@@ -10,6 +10,30 @@ export default function SignInPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+
+  // Initialize accent color from localStorage on mount
+  useEffect(() => {
+    const savedAccentColor = localStorage.getItem('accentColor')
+    const defaultAccentColor = '#315C4D'
+    const accentColor = savedAccentColor || defaultAccentColor
+    
+    // Apply accent color to CSS custom properties
+    const root = document.documentElement
+    root.style.setProperty('--accent', accentColor)
+    root.style.setProperty('--accent-hover', adjustColorBrightness(accentColor, -20))
+  }, [])
+
+  const adjustColorBrightness = (color: string, percent: number) => {
+    const num = parseInt(color.replace('#', ''), 16)
+    const amt = Math.round(2.55 * percent)
+    const R = (num >> 16) + amt
+    const G = (num >> 8 & 0x00FF) + amt
+    const B = (num & 0x0000FF) + amt
+    return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+      (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+      (B < 255 ? B < 1 ? 0 : B : 255))
+      .toString(16).slice(1)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,7 +77,7 @@ export default function SignInPage() {
             />
           </div>
           <h1 className="auth-title">DataSpur Login</h1>
-          <p className="auth-subtitle">Sign in to access your project management dashboard</p>
+          <p className="auth-subtitle">Unified DataOps & Project Intelligence Platform</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -115,17 +139,6 @@ export default function SignInPage() {
           </button>
         </form>
 
-        <div className="auth-footer">
-          <div className="auth-demo-credentials">
-            <h3>Demo Credentials</h3>
-            <p><strong>Email:</strong> admin@dataspur.com</p>
-            <p><strong>Password:</strong> admin123</p>
-          </div>
-          <div className="auth-info">
-            <span className="material-symbols-outlined">info</span>
-            Please change the default password after first login
-          </div>
-        </div>
       </div>
     </div>
   )

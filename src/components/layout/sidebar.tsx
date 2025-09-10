@@ -52,8 +52,8 @@ export default function Sidebar() {
   const [showUserModal, setShowUserModal] = useState(false)
   const [modalView, setModalView] = useState<ModalView>('menu')
   const [theme, setTheme] = useState<Theme>('dark')
-  const [accentColor, setAccentColor] = useState('#FF6B6B')
-  const [customHex, setCustomHex] = useState('#FF6B6B')
+  const [accentColor, setAccentColor] = useState('#315C4D')
+  const [customHex, setCustomHex] = useState('#315C4D')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const router = useRouter()
   const { data: session } = useSession()
@@ -346,7 +346,7 @@ export default function Sidebar() {
                               value={customHex}
                               onChange={handleHexInputChange}
                               className="hex-input"
-                              placeholder="#FF6B6B"
+                              placeholder="#315C4D"
                               maxLength={7}
                             />
                           </div>
