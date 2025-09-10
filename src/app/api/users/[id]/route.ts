@@ -136,7 +136,7 @@ export async function DELETE(
 
     // Check if user has any projects (might want to prevent deletion if they have projects)
     const userProjects = await prisma.project.findMany({
-      where: { userId: params.id }
+      where: { ownerId: params.id }
     })
 
     if (userProjects.length > 0) {
