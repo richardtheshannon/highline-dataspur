@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export default function Footer() {
   const [debugBordersEnabled, setDebugBordersEnabled] = useState(false)
   const [footerFixed, setFooterFixed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const footerRef = useRef<HTMLElement>(null)
 
   const toggleDebugBorders = () => {
     const newState = !debugBordersEnabled
@@ -27,13 +28,12 @@ export default function Footer() {
     localStorage.setItem('footerFixed', JSON.stringify(newState))
     
     // Toggle the fixed footer by adding/removing a class to the footer
-    const footer = document.querySelector('.footer')
-    if (footer) {
+    if (footerRef.current) {
       if (newState) {
-        footer.classList.add('footer-fixed')
+        footerRef.current.classList.add('footer-fixed')
         document.body.classList.add('has-fixed-footer')
       } else {
-        footer.classList.remove('footer-fixed')
+        footerRef.current.classList.remove('footer-fixed')
         document.body.classList.remove('has-fixed-footer')
       }
     }
@@ -55,9 +55,8 @@ export default function Footer() {
       setFooterFixed(isFixed)
       
       // Apply the fixed class if needed
-      const footer = document.querySelector('.footer')
-      if (footer && isFixed) {
-        footer.classList.add('footer-fixed')
+      if (footerRef.current && isFixed) {
+        footerRef.current.classList.add('footer-fixed')
         document.body.classList.add('has-fixed-footer')
       }
     }
@@ -65,7 +64,7 @@ export default function Footer() {
 
   return (
     <>
-      <footer className="footer">
+      <footer ref={footerRef} className="footer">
         <div className="footer-left">
           <button className="footer-icon">
             <span className="material-symbols-outlined">format_indent_increase</span>

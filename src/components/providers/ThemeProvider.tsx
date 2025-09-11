@@ -25,8 +25,22 @@ interface ThemeProviderProps {
 }
 
 export default function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>('system')
-  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light')
+  // Initialize theme from localStorage and current DOM state
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as Theme) || 'system'
+    }
+    return 'system'
+  })
+  
+  // Initialize actualTheme from the current data-theme attribute
+  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const currentTheme = document.documentElement.getAttribute('data-theme')
+      return (currentTheme as 'light' | 'dark') || 'light'
+    }
+    return 'light'
+  })
 
   useEffect(() => {
     // Get initial theme from localStorage or default to system
