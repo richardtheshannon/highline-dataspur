@@ -97,15 +97,15 @@ export default function PlatformPerformanceChart() {
         <p className="chart-subtitle">Monthly engagement metrics across advertising platforms</p>
       </div>
       
-      <div style={{ width: '100%', height: '500px', marginTop: '1.5rem' }}>
+      <div style={{ width: '100%', height: '400px', marginTop: '1rem' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{
-              top: 20,
-              right: 30,
-              left: 40,
-              bottom: 60,
+              top: 10,
+              right: 20,
+              left: 30,
+              bottom: 40,
             }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.3} />
@@ -134,8 +134,8 @@ export default function PlatformPerformanceChart() {
             />
             <Legend 
               wrapperStyle={{ 
-                paddingTop: '20px',
-                fontSize: '12px',
+                paddingTop: '10px',
+                fontSize: '11px',
                 color: 'var(--text-secondary)'
               }}
             />
@@ -175,7 +175,7 @@ export default function PlatformPerformanceChart() {
         </ResponsiveContainer>
       </div>
       
-      <div className="chart-insights" style={{ marginTop: '1.5rem' }}>
+      <div className="chart-insights" style={{ marginTop: '1rem' }}>
         <div className="insight-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
           <div className="insight-card">
             <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Top Performer</h4>

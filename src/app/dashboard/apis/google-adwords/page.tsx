@@ -18,7 +18,7 @@ export default function GoogleAdWordsPage() {
   }
 
   return (
-    <div className="safe-margin">
+    <div className="projects-page">
       <div className="create-project-container">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

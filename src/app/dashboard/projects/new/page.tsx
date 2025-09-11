@@ -20,7 +20,8 @@ export default function NewProjectPage() {
     projectGoal: '',
     status: 'PLANNING',
     priority: 'MEDIUM',
-    projectType: 'DEVELOPMENT'
+    projectType: 'DEVELOPMENT',
+    dueDate: ''
   })
   
   // Timeline generation state
@@ -34,9 +35,7 @@ export default function NewProjectPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+  const handleSubmit = async () => {
     if (!formData.name.trim()) {
       setError('Project name is required')
       return
@@ -53,6 +52,7 @@ export default function NewProjectPage() {
         status: formData.status as 'PLANNING' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED',
         priority: formData.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
         projectType: formData.projectType as 'DEVELOPMENT' | 'DESIGN' | 'MARKETING' | 'RESEARCH' | 'OTHER',
+        endDate: formData.dueDate || null,
         timelineEvents: timelineEvents.length > 0 ? timelineEvents : undefined
       }
       
@@ -98,20 +98,36 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="safe-margin">
+    <div className="projects-page">
+      {/* Header with Action Buttons - Full width */}
+      <div className="projects-header">
+        <div>
+          <h1 className="create-project-title">Create New Project</h1>
+          <p className="create-project-subtitle">Add a new project to your workspace</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="form-btn form-btn-secondary"
+            disabled={loading}
+            style={{ margin: 0 }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !formData.name.trim()}
+            className="form-btn form-btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}
+          >
+            {loading && <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>refresh</span>}
+            {loading ? 'Creating...' : `Create Project${timelineEvents.length > 0 ? ` (${timelineEvents.length} Events)` : ''}`}
+          </button>
+        </div>
+      </div>
+      
       <div className="create-project-container">
-        <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="create-project-title">Create New Project</h1>
-              <p className="create-project-subtitle">Add a new project to your workspace</p>
-            </div>
-            <button
-              onClick={handleCancel}
-              className="create-project-close-btn"
-            >
-              <span className="material-symbols-outlined">close</span>
-            </button>
-          </div>
 
           {error && (
             <div className="create-project-error">
@@ -119,7 +135,7 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="create-project-form">
+          <div className="create-project-form">
             {/* Basic Information */}
             <div className="form-section">
               <h3 className="form-section-title">Basic Information</h3>
@@ -191,6 +207,64 @@ export default function NewProjectPage() {
             </div>
             </div>
 
+            {/* Project Details */}
+            <div className="form-section">
+              <h3 className="form-section-title">Project Details</h3>
+              <div className="form-grid">
+                <div className="form-field">
+                  <label htmlFor="status" className="form-label">
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="form-input form-select"
+                  >
+                    <option value="PLANNING">Planning</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="ON_HOLD">On Hold</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="priority" className="form-label">
+                    Priority
+                  </label>
+                  <select
+                    id="priority"
+                    name="priority"
+                    value={formData.priority}
+                    onChange={handleInputChange}
+                    className="form-input form-select"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="dueDate" className="form-label">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    id="dueDate"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleInputChange}
+                    className="form-input"
+                    placeholder="Optional project deadline"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Timeline Generation */}
             <div className="form-section">
               <h3 className="form-section-title">
@@ -234,71 +308,7 @@ export default function NewProjectPage() {
                 )}
               </div>
             </div>
-
-            {/* Project Details */}
-            <div className="form-section">
-              <h3 className="form-section-title">Project Details</h3>
-              <div className="form-grid">
-                <div className="form-field">
-                  <label htmlFor="status" className="form-label">
-                    Status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="form-input form-select"
-                  >
-                    <option value="PLANNING">Planning</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="ON_HOLD">On Hold</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="priority" className="form-label">
-                    Priority
-                  </label>
-                  <select
-                    id="priority"
-                    name="priority"
-                    value={formData.priority}
-                    onChange={handleInputChange}
-                    className="form-input form-select"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-
-            {/* Form Actions */}
-            <div className="form-actions">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="form-btn form-btn-secondary"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading || !formData.name.trim()}
-                className="form-btn form-btn-primary"
-              >
-                {loading && <span className="material-symbols-outlined animate-spin text-sm">refresh</span>}
-                {loading ? 'Creating...' : `Create Project${timelineEvents.length > 0 ? ` with ${timelineEvents.length} Events` : ''}`}
-              </button>
-            </div>
-          </form>
+          </div>
       </div>
     </div>
   )

@@ -68,15 +68,15 @@ function PlatformChart({ config }: PlatformChartProps) {
         <h4 className="platform-name">{config.name}</h4>
       </div>
       
-      <div style={{ width: '100%', height: '200px' }}>
+      <div style={{ width: '100%', height: '160px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={config.data}
             margin={{
-              top: 10,
-              right: 15,
-              left: 15,
-              bottom: 10,
+              top: 5,
+              right: 10,
+              left: 10,
+              bottom: 5,
             }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.2} />

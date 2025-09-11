@@ -11,6 +11,7 @@ import TomorrowMilestones from '@/components/dashboard/TomorrowMilestones'
 import OverdueEvents from '@/components/dashboard/OverdueEvents'
 import PlatformPerformanceChart from '@/components/dashboard/PlatformPerformanceChart'
 import SpendPerformanceChart from '@/components/dashboard/SpendPerformanceChart'
+import MarketingPieChart from '@/components/dashboard/MarketingPieChart'
 
 export default function Home() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
@@ -74,6 +75,9 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'start' }}>
             {/* Left Column - 1/3 */}
             <div className="main-content-left">
+              {/* Marketing Performance Chart */}
+              <MarketingPieChart />
+              
               {/* Daily Manifest Card */}
               <DailyManifest />
               
