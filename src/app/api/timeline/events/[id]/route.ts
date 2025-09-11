@@ -84,6 +84,9 @@ export async function PUT(
       )
     }
 
+    // Map status if provided
+    const mappedStatus = body.status ? mapStatusToDb(body.status) : TimelineEventStatus.PENDING
+
     // Update the timeline event
     const updatedEvent = await prisma.timelineEvent.update({
       where: { id: eventId },
@@ -92,7 +95,7 @@ export async function PUT(
         description: body.description || null,
         date: new Date(body.date),
         type: body.type,
-        status: body.status ? mapStatusToDb(body.status) : undefined
+        status: mappedStatus
       }
     })
 

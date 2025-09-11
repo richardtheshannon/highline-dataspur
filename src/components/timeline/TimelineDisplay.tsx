@@ -134,7 +134,8 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
           title: updatedEvent.title,
           description: updatedEvent.description,
           date: updatedEvent.date,
-          type: updatedEvent.type
+          type: updatedEvent.type,
+          status: updatedEvent.status
         })
       })
 

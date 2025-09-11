@@ -32,6 +32,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ **Fixed**: Footer toggle functionality (place_item icon now properly toggles fixed/not-fixed positioning)
 - ✅ **Fixed**: Theme flash issue on client-side rendered pages (Google AdWords page no longer flashes light mode)
 - ✅ **Fixed**: Project deletion now persists in database
+- ✅ **Enhanced**: Timeline Event Spacing - Added "None" option to skip calendar date calculations
+- ✅ **Enhanced**: Timeline Event Status System - Full status management for individual milestones
+- ✅ **Enhanced**: Status tracking with Pending/In Progress/Completed options for all timeline events
 
 ## File Structure
 
@@ -268,6 +271,57 @@ railway variables set DATABASE_URL="postgresql://..."
 - **Solution**: Updated to call DELETE `/api/projects/[id]` endpoint
 - **Impact**: Project deletions now persist in database
 
+### Timeline Event Spacing Enhancement
+- **Feature**: Added "None" option to Event Spacing dropdown
+- **Functionality**: When "None" is selected, timeline events are created without calendar date calculations
+- **UI Updates**: Shows "No dates assigned" and "No date" in timeline displays
+- **Use Case**: Allows users to create milestone lists without specific scheduling
+
+### Timeline Event Status System
+- **Feature**: Complete status management system for individual timeline events
+- **Status Options**: Pending (default), In Progress, Completed
+- **Visual Indicators**: Color-coded badges (gray, blue, green) throughout the application
+- **Database Schema**: Added `TimelineEventStatus` enum and `status` field to `TimelineEvent` model
+- **UI Integration**:
+  - Status dropdowns in TimelinePreview component (expanded event editing)
+  - Status badges in collapsed event views
+  - Status dropdown in TimelineEventModal for individual event editing
+  - Status display in TimelineDisplay component for existing events
+- **API Enhancements**: 
+  - Status mapping between frontend (lowercase) and database (uppercase enum) values
+  - All CRUD endpoints updated to handle status field properly
+  - Backwards compatibility with existing events (default to "pending")
+- **User Experience**: Users can now track milestone progress and update status as work progresses
+
+## Recent Updates (2025-09-11) - Mobile Sidebar & Footer Fixes
+
+### Mobile Sidebar Navigation Improvements
+- **Issue**: Right sidebar icons were shifting off-screen when footer was not fixed on mobile
+- **Issue**: Sidebar icons moving during page scroll on mobile devices
+- **Issue**: Footer overlapping with sidebar in certain configurations
+
+### Mobile Layout Fixes Applied
+- **Right Sidebar Positioning**: Added `right: 0 !important` and `position: fixed !important` to mobile sidebar CSS
+- **Scroll Stability**: Added hardware acceleration properties (`transform: translateZ(0)`, `backface-visibility: hidden`, `will-change: transform`) to prevent sidebar movement during scroll
+- **Z-Index Coordination**: Increased sidebar z-index to 1000 to prevent footer overlap, ensuring sidebar always spans full viewport height
+- **Footer State-Based Spacing**: Added `margin-right: 20px` to sidebar when footer is not fixed to prevent off-screen positioning
+- **Navigation Container Flex**: Added `flex-direction: initial` override for nav-items-container when footer is not fixed
+
+### UI Polish Updates
+- **Border Removal**: Removed dashed debug borders from `.safe-margin` class across all pages
+- **Footer Styling**: Removed top border from `.footer-fixed` for cleaner appearance
+- **Mobile Footer Width**: Removed forced width constraints on footer for more natural mobile behavior
+
+### Files Modified (Mobile Layout Fixes)
+- `src/app/globals.css` - Mobile responsive CSS improvements for sidebar and footer coordination
+- `src/components/layout/footer.tsx` - Footer toggle functionality enhancements
+
+### Key Improvements
+1. **Mobile Sidebar Stability**: Right sidebar now stays properly positioned regardless of footer state or scroll position
+2. **Better Mobile UX**: Navigation elements no longer shift or go off-screen during footer state changes
+3. **Improved Visual Polish**: Removed debug borders and unnecessary styling elements for cleaner appearance
+4. **Cross-Device Consistency**: Sidebar behavior now consistent across all device types and viewport sizes
+
 ## Key Files Modified Today
 
 ### Timeline Generation Enhancement
@@ -285,8 +339,21 @@ railway variables set DATABASE_URL="postgresql://..."
 - `src/app/api/projects/[id]/route.ts` - Enhanced PUT endpoint for timeline events
 - `src/hooks/useProjects.ts` - Fixed deleteProject to call API, added UpdateProjectData type
 
+### Timeline Event Status System (Latest Updates)
+- `src/lib/markdownParser.ts` - Added status field to TimelineEvent interface with default "pending"
+- `src/components/timeline/TimelineGenerator.tsx` - Added "None" spacing option and status handling
+- `src/components/timeline/TimelinePreview.tsx` - Added status dropdowns and badges to event editing
+- `src/components/timeline/TimelineDisplay.tsx` - Added status badges to existing event displays
+- `src/components/timeline/TimelineEventModal.tsx` - Added status dropdown and display in modal
+- `prisma/schema.prisma` - Added TimelineEventStatus enum and status field to TimelineEvent model
+- `src/app/api/projects/route.ts` - Added status mapping functions and response transformations
+- `src/app/api/projects/[id]/route.ts` - Added status handling in individual project endpoints
+- `src/app/api/timeline/events/[id]/route.ts` - Added status support to timeline event CRUD operations
+- `src/hooks/useProjects.ts` - Updated ApiTimelineEvent interface to include status field
+- `src/app/dashboard/projects/[id]/edit/page.tsx` - Added status handling in project edit conversion
+
 ### Styling
-- `src/app/globals.css` - Added styles for expandable timeline events and HTML content
+- `src/app/globals.css` - Added styles for expandable timeline events, HTML content, and status badges
 
 ## Troubleshooting
 

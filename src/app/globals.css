@@ -213,7 +213,6 @@ body {
 }
 
 .safe-margin {
-    border: 1px dashed var(--border-color);
     padding: 15px;
     display: flex;
     align-items: center;
@@ -292,11 +291,12 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    z-index: 100;
+    z-index: 1000; /* Higher than footer to prevent overlap */
     transition: width 0.3s;
     width: 64px;
     background: transparent;
-    height: 100vh;
+    height: 100vh !important; /* Always span full viewport height */
+    min-height: 100vh !important;
 }
 
 .main-menu-sidebar.expanded {
@@ -561,11 +561,18 @@ body {
     
     .main-menu-sidebar {
         width: 50px;
+        right: 0 !important; /* Ensure sidebar stays at right edge regardless of footer state */
+        position: fixed !important;
+        transform: translateZ(0) !important; /* Force hardware acceleration */
+        backface-visibility: hidden !important; /* Fix iOS scroll issues */
+        -webkit-backface-visibility: hidden !important;
+        will-change: transform !important; /* Optimize for animations */
     }
     
     .main-menu-sidebar.expanded {
         width: 65%;
         max-width: 250px;
+        right: 0 !important;
     }
 
     .nav-circle {
@@ -1031,21 +1038,48 @@ body {
     }
 }
 
-/* Mobile footer fix */
-@media (max-width: 768px) {
-    .footer {
+/* Mobile footer styles */
+@media (max-width: 768px) {    
+    /* Only make footer fixed on mobile when explicitly toggled */
+    .footer.footer-fixed {
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
         z-index: 999 !important;
-        margin-right: 0 !important;
-        width: 100% !important;
     }
     
-    .content {
+    /* When not fixed, footer should be static on mobile */
+    .footer:not(.footer-fixed) {
+        position: static !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: auto !important;
+    }
+    
+    /* Only add bottom spacing when footer is fixed on mobile */
+    .footer.footer-fixed ~ * .content,
+    body.has-fixed-footer .content {
         margin-bottom: 60px !important; /* Space for footer */
         padding-bottom: 20px !important;
+    }
+    
+    /* Remove bottom spacing when footer is not fixed on mobile */
+    .footer:not(.footer-fixed) ~ * .content,
+    body:not(.has-fixed-footer) .content {
+        margin-bottom: 0 !important;
+        padding-bottom: 20px !important;
+    }
+    
+    /* Add margin-right to sidebar when footer is not fixed */
+    body:not(.has-fixed-footer) .main-menu-sidebar {
+        margin-right: 20px !important;
+    }
+    
+    /* Remove flex-direction column from nav-items-container when footer is not fixed */
+    body:not(.has-fixed-footer) .nav-items-container {
+        flex-direction: initial !important;
     }
 }
 
@@ -1647,7 +1681,6 @@ body {
     right: 0 !important;
     z-index: 50 !important;
     background: var(--bg-secondary) !important;
-    border-top: 1px solid var(--border-color) !important;
 }
 
 /* Add padding to body when footer is fixed */
