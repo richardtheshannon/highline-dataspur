@@ -40,6 +40,10 @@ export interface CreateProjectData extends Omit<Partial<ApiProject>, 'timelineEv
   timelineEvents?: TimelineEvent[]
 }
 
+export interface UpdateProjectData extends Omit<Partial<ApiProject>, 'timelineEvents'> {
+  timelineEvents?: TimelineEvent[]
+}
+
 // Note: Mock data removed - now using real database API
 
 export function useProjects() {
@@ -91,16 +95,25 @@ export function useProjects() {
     }
   }
 
-  const updateProject = async (projectId: string, projectData: Partial<ApiProject>) => {
+  const updateProject = async (projectId: string, projectData: UpdateProjectData) => {
     try {
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to update project: ${response.status}`)
+      }
+
+      const updatedProject = await response.json()
       setProjects(prev => prev.map(project => 
-        project.id === projectId 
-          ? { ...project, ...projectData, updatedAt: new Date().toISOString() }
-          : project
+        project.id === projectId ? updatedProject : project
       ))
+      return updatedProject
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update project')
       throw err

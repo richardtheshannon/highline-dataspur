@@ -26,6 +26,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ **Complete**: Authentication System, Theme Support, Mobile Responsive
 - ✅ **Complete**: Timeline System, Project Management, Railway Deployment
 - ✅ **Complete**: PostgreSQL Migration and Production Ready
+- ✅ **Fixed**: Footer toggle functionality (place_item icon now properly toggles fixed/not-fixed positioning)
+- ✅ **Fixed**: Theme flash issue on client-side rendered pages (Google AdWords page no longer flashes light mode)
 
 ## File Structure
 
@@ -208,6 +210,18 @@ railway variables set DATABASE_URL="postgresql://..."
 - `TimelineUpload`: Markdown file upload for timeline generation
 - `ThemeToggle`: Theme switching functionality
 
+## Recent Updates (2025-09-11)
+
+### Footer Toggle Fix
+- **Issue**: Footer toggle (place_item icon) was not working properly
+- **Solution**: Replaced `document.querySelector` with React `useRef` for reliable DOM element reference
+- **Impact**: Footer now properly toggles between fixed and not-fixed positions with localStorage persistence
+
+### Theme Flash Fix
+- **Issue**: Google AdWords page flashed light theme when in dark mode
+- **Solution**: Modified ThemeProvider to initialize with correct theme from DOM state using lazy state initialization
+- **Impact**: All client-side rendered pages now load with correct theme without flashing
+
 ## Troubleshooting
 
 ### Common Issues
@@ -215,6 +229,8 @@ railway variables set DATABASE_URL="postgresql://..."
 - **Authentication**: Verify OAuth provider credentials and NEXTAUTH_SECRET
 - **Build Errors**: Run `npm run type-check` and fix TypeScript errors
 - **Prisma Issues**: Regenerate client with `npx prisma generate`
+- **Theme Flash**: If theme flashing occurs on new pages, ensure ThemeProvider initializes from DOM state
+- **Footer Toggle**: If footer toggle stops working, check that footerRef is properly connected
 
 ### Development Tools
 - Use `http://localhost:5555` for Prisma Studio (database GUI)

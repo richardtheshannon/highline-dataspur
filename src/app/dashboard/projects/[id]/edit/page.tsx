@@ -1,8 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useProjects } from '@/hooks/useProjects'
+import MarkdownUploader from '@/components/forms/MarkdownUploader'
+import TimelineGenerator from '@/components/timeline/TimelineGenerator'
+import TimelinePreview from '@/components/timeline/TimelinePreview'
+import { MarkdownParseResult, TimelineEvent } from '@/lib/markdownParser'
 
 export default function EditProjectPage() {
   const router = useRouter()
@@ -25,6 +29,12 @@ export default function EditProjectPage() {
     startDate: '',
     endDate: ''
   })
+  
+  // Timeline generation state
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [markdownResult, setMarkdownResult] = useState<MarkdownParseResult | null>(null)
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
+  const [timelineError, setTimelineError] = useState<string | null>(null)
 
   // Load project data when component mounts
   useEffect(() => {
@@ -39,12 +49,51 @@ export default function EditProjectPage() {
         startDate: project.startDate || '',
         endDate: project.endDate || ''
       })
+      // Load existing timeline events if they exist
+      if (project.timelineEvents && project.timelineEvents.length > 0) {
+        // Convert ApiTimelineEvent to TimelineEvent format
+        const convertedEvents: TimelineEvent[] = project.timelineEvents.map(event => ({
+          title: event.title,
+          description: event.description || undefined,
+          date: new Date(event.date),
+          type: event.type
+        }))
+        setTimelineEvents(convertedEvents)
+      }
     }
   }, [project])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  // Timeline handling functions
+  const handleFileProcessed = (result: MarkdownParseResult, file: File) => {
+    setMarkdownResult(result)
+    setUploadedFile(file)
+    setTimelineError(null)
+  }
+
+  const handleFileError = (error: string) => {
+    setTimelineError(error)
+    setMarkdownResult(null)
+    setTimelineEvents([])
+  }
+
+  const handleFileClear = () => {
+    setUploadedFile(null)
+    setMarkdownResult(null)
+    setTimelineEvents([])
+    setTimelineError(null)
+  }
+
+  const handleTimelineGenerated = useCallback((events: TimelineEvent[]) => {
+    setTimelineEvents(events)
+  }, [])
+
+  const handleEventsModified = (events: TimelineEvent[]) => {
+    setTimelineEvents(events)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,7 +116,8 @@ export default function EditProjectPage() {
         priority: formData.priority as any,
         projectType: formData.projectType as any,
         startDate: formData.startDate || null,
-        endDate: formData.endDate || null
+        endDate: formData.endDate || null,
+        timelineEvents: timelineEvents.length > 0 ? timelineEvents : undefined
       }
       
       await updateProject(projectId, updateData)
@@ -291,6 +341,60 @@ export default function EditProjectPage() {
             </div>
           </div>
 
+          {/* Timeline Generation */}
+          <div className="form-section">
+            <h3 className="form-section-title">
+              <span className="material-symbols-outlined">timeline</span>
+              Timeline Generation
+            </h3>
+            <p className="form-section-description">
+              Upload a markdown file to automatically generate timeline events from H1 headers.
+            </p>
+            
+            <div className="timeline-upload-container">
+              <MarkdownUploader
+                onFileProcessed={handleFileProcessed}
+                onError={handleFileError}
+                onClear={handleFileClear}
+                currentFile={uploadedFile}
+              />
+              
+              {timelineError && (
+                <div className="timeline-error">
+                  <span className="material-symbols-outlined">error</span>
+                  <p>{timelineError}</p>
+                </div>
+              )}
+              
+              {markdownResult && markdownResult.headers.length > 0 && (
+                <div className="timeline-generation">
+                  <TimelineGenerator
+                    headers={markdownResult.headers}
+                    onTimelineGenerated={handleTimelineGenerated}
+                  />
+                  
+                  {timelineEvents.length > 0 && (
+                    <TimelinePreview
+                      events={timelineEvents}
+                      markdownContent={markdownResult.content}
+                      onEventsModified={handleEventsModified}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Show existing timeline events if no new file is uploaded */}
+              {!markdownResult && timelineEvents.length > 0 && (
+                <div className="timeline-generation">
+                  <div className="existing-timeline-notice">
+                    <span className="material-symbols-outlined">info</span>
+                    <p>This project has {timelineEvents.length} existing timeline event{timelineEvents.length > 1 ? 's' : ''}. Upload a new markdown file to replace them.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Form Actions */}
           <div className="form-actions">
             <button
@@ -307,7 +411,7 @@ export default function EditProjectPage() {
               className="form-btn form-btn-primary"
             >
               {loading && <span className="material-symbols-outlined animate-spin">refresh</span>}
-              {loading ? 'Updating...' : 'Update Project'}
+              {loading ? 'Updating...' : `Update Project${timelineEvents.length > 0 ? ` (${timelineEvents.length} Events)` : ''}`}
             </button>
           </div>
         </form>
