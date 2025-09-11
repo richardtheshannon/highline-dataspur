@@ -57,7 +57,7 @@ export default function MarketingPieChart() {
               cx="50%"
               cy="50%"
               outerRadius={60}
-              label={(entry) => `$${(entry.value / 1000).toFixed(0)}k`}
+              label={(entry) => entry.value ? `$${(entry.value / 1000).toFixed(0)}k` : ''}
               labelLine={false}
             >
               {data01.map((entry, index) => (
@@ -71,7 +71,7 @@ export default function MarketingPieChart() {
               cy="50%"
               innerRadius={70}
               outerRadius={90}
-              label={(entry) => `${entry.value}x`}
+              label={(entry) => entry.value ? `${entry.value}x` : ''}
               labelLine={false}
             >
               {data02.map((entry, index) => (
