@@ -25,6 +25,7 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [events, setEvents] = useState(timelineEvents)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -56,6 +57,26 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
       'default': 'bg-gray-500'
     }
     return colorMap[type] || colorMap.default
+  }
+
+  const toggleEventExpansion = (eventId: string) => {
+    setExpandedEvents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId)
+      } else {
+        newSet.add(eventId)
+      }
+      return newSet
+    })
+  }
+
+  const expandAllEvents = () => {
+    setExpandedEvents(new Set(events.map(e => e.id)))
+  }
+
+  const collapseAllEvents = () => {
+    setExpandedEvents(new Set())
   }
 
   const handleView = (event: TimelineEvent) => {
@@ -160,10 +181,32 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
   return (
     <>
       <div className="form-section">
-        <h3 className="form-section-title">
-          <span className="material-symbols-outlined">timeline</span>
-          Project Timeline Events ({events.length})
-        </h3>
+        <div className="timeline-section-header">
+          <h3 className="form-section-title">
+            <span className="material-symbols-outlined">timeline</span>
+            Project Timeline Events ({events.length})
+          </h3>
+          {events.some(e => e.description) && (
+            <div className="timeline-expand-controls">
+              <button
+                onClick={expandAllEvents}
+                className="timeline-control-btn"
+                title="Expand all events"
+              >
+                <span className="material-symbols-outlined">unfold_more</span>
+                Expand All
+              </button>
+              <button
+                onClick={collapseAllEvents}
+                className="timeline-control-btn"
+                title="Collapse all events"
+              >
+                <span className="material-symbols-outlined">unfold_less</span>
+                Collapse All
+              </button>
+            </div>
+          )}
+        </div>
         
         <div className="timeline-events-container">
           {sortedEvents.map((event, index) => (
@@ -181,7 +224,20 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
               
               <div className="timeline-event-content">
                 <div className="timeline-event-header">
-                  <h4 className="timeline-event-title">{event.title}</h4>
+                  <div className="timeline-event-title-row">
+                    {event.description && (
+                      <button
+                        onClick={() => toggleEventExpansion(event.id)}
+                        className="timeline-expand-btn"
+                        title={expandedEvents.has(event.id) ? 'Collapse' : 'Expand'}
+                      >
+                        <span className={`material-symbols-outlined timeline-chevron ${expandedEvents.has(event.id) ? 'expanded' : ''}`}>
+                          expand_more
+                        </span>
+                      </button>
+                    )}
+                    <h4 className="timeline-event-title">{event.title}</h4>
+                  </div>
                   <div className="timeline-event-actions">
                     <button
                       onClick={() => handleView(event)}
@@ -213,10 +269,11 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
                   {formatDate(event.date)}
                 </div>
                 
-                {event.description && (
-                  <p className="timeline-event-description">
-                    {event.description}
-                  </p>
+                {event.description && expandedEvents.has(event.id) && (
+                  <div 
+                    className="timeline-event-description timeline-html-content expanded"
+                    dangerouslySetInnerHTML={{ __html: event.description }}
+                  />
                 )}
                 
                 <div className="timeline-event-meta">

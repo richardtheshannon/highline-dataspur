@@ -370,6 +370,7 @@ export default function EditProjectPage() {
                 <div className="timeline-generation">
                   <TimelineGenerator
                     headers={markdownResult.headers}
+                    headersWithContent={markdownResult.headersWithContent}
                     onTimelineGenerated={handleTimelineGenerated}
                   />
                   

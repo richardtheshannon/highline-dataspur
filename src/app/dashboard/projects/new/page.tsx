@@ -294,6 +294,7 @@ export default function NewProjectPage() {
                   <div className="timeline-generation">
                     <TimelineGenerator
                       headers={markdownResult.headers}
+                      headersWithContent={markdownResult.headersWithContent}
                       onTimelineGenerated={handleTimelineGenerated}
                     />
                     

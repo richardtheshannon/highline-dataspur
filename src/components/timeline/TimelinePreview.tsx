@@ -183,7 +183,10 @@ export default function TimelinePreview({
                     <div className="expanded-field">
                       <label className="expanded-label">Description</label>
                       {readonly ? (
-                        <span className="expanded-value">{event.description || 'No description'}</span>
+                        <div 
+                          className="expanded-value timeline-html-content" 
+                          dangerouslySetInnerHTML={{ __html: event.description || 'No description' }}
+                        />
                       ) : (
                         <textarea
                           value={event.description || ''}

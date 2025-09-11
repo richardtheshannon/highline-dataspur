@@ -38,6 +38,15 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Helper function to strip HTML tags for editing
+  const stripHtmlTags = (html: string): string => {
+    if (!html) return ''
+    // Create a temporary div to parse HTML
+    const temp = document.createElement('div')
+    temp.innerHTML = html
+    return temp.textContent || temp.innerText || ''
+  }
+
   useEffect(() => {
     if (event) {
       // Format date for input field (YYYY-MM-DD)
@@ -46,7 +55,7 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
       
       setFormData({
         title: event.title,
-        description: event.description || '',
+        description: event.description ? stripHtmlTags(event.description) : '',
         date: formattedDate,
         type: event.type
       })
@@ -138,7 +147,10 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
               {event.description && (
                 <div className="timeline-event-view-section">
                   <h4 className="form-label">Description</h4>
-                  <p className="timeline-event-view-description">{event.description}</p>
+                  <div 
+                    className="timeline-event-view-description timeline-html-content"
+                    dangerouslySetInnerHTML={{ __html: event.description }}
+                  />
                 </div>
               )}
               

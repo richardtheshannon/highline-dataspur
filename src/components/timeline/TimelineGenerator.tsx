@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { generateTimelineEvents, TimelineEvent } from '@/lib/markdownParser'
+import { generateTimelineEvents, TimelineEvent, HeaderWithContent } from '@/lib/markdownParser'
 
 interface TimelineGeneratorProps {
   headers: string[]
+  headersWithContent?: HeaderWithContent[]
   onTimelineGenerated: (events: TimelineEvent[]) => void
   initialStartDate?: Date
   initialSpacing?: number
@@ -21,6 +22,7 @@ const SPACING_OPTIONS = [
 
 export default function TimelineGenerator({
   headers,
+  headersWithContent,
   onTimelineGenerated,
   initialStartDate = new Date(),
   initialSpacing = 7
@@ -33,8 +35,19 @@ export default function TimelineGenerator({
 
   // Generate timeline events whenever inputs change
   useEffect(() => {
-    if (headers.length > 0) {
+    if (headersWithContent && headersWithContent.length > 0) {
+      // Use new method with content
       const events = generateTimelineEvents(
+        headersWithContent,
+        new Date(startDate),
+        spacingDays
+      )
+      setPreviewEvents(events)
+      onTimelineGenerated(events)
+    } else if (headers.length > 0) {
+      // Fallback to legacy method for backward compatibility
+      const { generateTimelineEventsFromHeaders } = require('@/lib/markdownParser')
+      const events = generateTimelineEventsFromHeaders(
         headers,
         new Date(startDate),
         spacingDays
@@ -42,7 +55,7 @@ export default function TimelineGenerator({
       setPreviewEvents(events)
       onTimelineGenerated(events)
     }
-  }, [headers, startDate, spacingDays])
+  }, [headers, headersWithContent, startDate, spacingDays])
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStartDate(e.target.value)

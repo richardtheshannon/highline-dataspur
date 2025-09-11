@@ -5,28 +5,116 @@ export interface TimelineEvent {
   type: string
 }
 
+export interface HeaderWithContent {
+  title: string
+  content: string
+  htmlContent: string
+}
+
 export interface MarkdownParseResult {
   headers: string[]
+  headersWithContent: HeaderWithContent[]
   content: string
   previewHtml: string
 }
 
 /**
- * Parse markdown content and extract H1 headers for timeline generation
+ * Convert markdown content to HTML with better formatting
+ */
+function convertMarkdownToHtml(markdown: string): string {
+  if (!markdown.trim()) return ''
+  
+  let html = markdown
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    
+    // Bold and italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    
+    // Code (inline and blocks)
+    .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    
+    // Process lists (both ordered and unordered)
+    .split('\n')
+    .map(line => {
+      // Unordered lists
+      if (/^\s*[-*+]\s+(.+)/.test(line)) {
+        const indent = (line.match(/^\s*/)?.[0].length || 0) / 2
+        const content = line.replace(/^\s*[-*+]\s+/, '')
+        return `<li style="margin-left: ${indent * 20}px">${content}</li>`
+      }
+      // Ordered lists
+      if (/^\s*\d+\.\s+(.+)/.test(line)) {
+        const indent = (line.match(/^\s*/)?.[0].length || 0) / 2
+        const content = line.replace(/^\s*\d+\.\s+/, '')
+        return `<li style="margin-left: ${indent * 20}px">${content}</li>`
+      }
+      return line
+    })
+    .join('\n')
+    
+    // Convert line breaks and paragraphs
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+  
+  // Wrap in paragraph tags and clean up
+  html = `<p>${html}</p>`
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<h[1-6]>)/g, '$1')
+    .replace(/(<\/h[1-6]>)<\/p>/g, '$1')
+    .replace(/<p>(<li)/g, '<ul>$1')
+    .replace(/(<\/li>)<\/p>/g, '$1</ul>')
+    .replace(/<ul>(<li[^>]*>[^<]*<\/li>)\s*<ul>/g, '<ul>$1')
+    .replace(/<\/ul>\s*(<li)/g, '$1')
+    .replace(/(<\/li>)\s*<\/ul>/g, '$1</ul>')
+  
+  return html
+}
+
+/**
+ * Parse markdown content and extract H1 headers with their content for timeline generation
  */
 export function parseMarkdownHeaders(content: string): MarkdownParseResult {
   if (!content.trim()) {
-    return { headers: [], content: '', previewHtml: '' }
+    return { headers: [], headersWithContent: [], content: '', previewHtml: '' }
   }
 
   // Extract H1 headers (lines starting with # followed by space)
   const h1Regex = /^#\s+(.+)$/gm
   const headers: string[] = []
-  let match
-
-  while ((match = h1Regex.exec(content)) !== null) {
-    headers.push(match[1].trim())
-  }
+  const headersWithContent: HeaderWithContent[] = []
+  
+  // Split content by H1 headers to extract content under each header
+  const sections = content.split(/^#\s+/gm).filter(section => section.trim())
+  
+  // Process each section (first section might not have a header if content doesn't start with H1)
+  sections.forEach((section, index) => {
+    const lines = section.split('\n')
+    const headerTitle = lines[0].trim()
+    
+    // Skip if this looks like content before the first header
+    if (index === 0 && !content.trim().startsWith('#')) {
+      return
+    }
+    
+    // Get content under this header (everything except the first line which is the header)
+    const sectionContent = lines.slice(1).join('\n').trim()
+    
+    headers.push(headerTitle)
+    headersWithContent.push({
+      title: headerTitle,
+      content: sectionContent || '',
+      htmlContent: sectionContent ? convertMarkdownToHtml(sectionContent) : ''
+    })
+  })
 
   // Generate basic HTML preview (simple markdown-to-HTML conversion)
   const previewHtml = content
@@ -41,6 +129,7 @@ export function parseMarkdownHeaders(content: string): MarkdownParseResult {
   
   return {
     headers,
+    headersWithContent,
     content,
     previewHtml: `<p>${previewHtml}</p>`
   }
@@ -50,6 +139,33 @@ export function parseMarkdownHeaders(content: string): MarkdownParseResult {
  * Generate timeline events from markdown headers with specified spacing
  */
 export function generateTimelineEvents(
+  headersWithContent: HeaderWithContent[],
+  startDate: Date,
+  spacingDays: number
+): TimelineEvent[] {
+  if (!headersWithContent.length) return []
+
+  const events: TimelineEvent[] = []
+  
+  headersWithContent.forEach((headerData, index) => {
+    const eventDate = new Date(startDate)
+    eventDate.setDate(startDate.getDate() + (index * spacingDays))
+    
+    events.push({
+      title: headerData.title,
+      description: headerData.htmlContent || headerData.content || `Generated from markdown H1 header: "${headerData.title}"`,
+      date: eventDate,
+      type: 'milestone'
+    })
+  })
+
+  return events
+}
+
+/**
+ * Generate timeline events from markdown headers with specified spacing (legacy compatibility)
+ */
+export function generateTimelineEventsFromHeaders(
   headers: string[],
   startDate: Date,
   spacingDays: number
