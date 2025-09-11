@@ -12,6 +12,7 @@ interface TimelineGeneratorProps {
 }
 
 const SPACING_OPTIONS = [
+  { value: 0, label: 'None', description: 'No calendar dates' },
   { value: 1, label: '1 Day', description: 'Daily milestones' },
   { value: 3, label: '3 Days', description: 'Every 3 days' },
   { value: 5, label: '5 Days', description: 'Work week spacing' },
@@ -76,6 +77,7 @@ export default function TimelineGenerator({
 
   const getTotalDuration = () => {
     if (headers.length === 0) return '0 days'
+    if (spacingDays === 0) return 'No dates assigned'
     const totalDays = (headers.length - 1) * spacingDays
     if (totalDays === 0) return 'Same day'
     if (totalDays < 7) return `${totalDays} days`
@@ -142,9 +144,11 @@ export default function TimelineGenerator({
           <div className="summary-item">
             <span className="summary-label">End Date:</span>
             <span className="summary-value">
-              {previewEvents.length > 0 
-                ? formatDate(previewEvents[previewEvents.length - 1].date)
-                : 'N/A'
+              {spacingDays === 0 
+                ? 'No dates assigned'
+                : previewEvents.length > 0 
+                  ? formatDate(previewEvents[previewEvents.length - 1].date)
+                  : 'N/A'
               }
             </span>
           </div>
@@ -165,7 +169,7 @@ export default function TimelineGenerator({
               </div>
               <div className="event-content">
                 <div className="event-title">{event.title}</div>
-                <div className="event-date">{formatDate(event.date)}</div>
+                <div className="event-date">{spacingDays === 0 ? 'No date' : formatDate(event.date)}</div>
               </div>
             </div>
           ))}
@@ -180,7 +184,7 @@ export default function TimelineGenerator({
                   +{previewEvents.length - 5} more events
                 </div>
                 <div className="event-date">
-                  {formatDate(previewEvents[previewEvents.length - 1].date)}
+                  {spacingDays === 0 ? 'No dates' : formatDate(previewEvents[previewEvents.length - 1].date)}
                 </div>
               </div>
             </div>

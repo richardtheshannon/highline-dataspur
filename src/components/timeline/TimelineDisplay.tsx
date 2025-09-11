@@ -10,6 +10,7 @@ interface TimelineEvent {
   description: string | null
   date: string
   type: string
+  status: 'pending' | 'in_progress' | 'completed'
   createdAt: string
   updatedAt: string
 }
@@ -279,6 +280,11 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
                 <div className="timeline-event-meta">
                   <span className="timeline-event-type">
                     {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                  </span>
+                  <span className={`timeline-event-status status-badge status-${event.status}`}>
+                    {event.status === 'pending' ? 'Pending' : 
+                     event.status === 'in_progress' ? 'In Progress' : 
+                     'Completed'}
                   </span>
                   <span className="timeline-event-created">
                     Added {new Date(event.createdAt).toLocaleDateString()}

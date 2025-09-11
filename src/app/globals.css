@@ -2471,6 +2471,25 @@ body.has-fixed-footer .content {
     color: var(--text-muted);
 }
 
+/* Timeline Event Status Badges */
+.status-badge.status-pending {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-muted);
+    border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.status-badge.status-in_progress {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.status-badge.status-completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
 .priority-badge.bg-gray-100 {
     background: rgba(107, 114, 128, 0.1);
     color: var(--text-muted);

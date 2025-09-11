@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, TimelineEventStatus } from '@prisma/client'
 
 const prisma = new PrismaClient()
+
+// Map frontend status values to database enum values
+function mapStatusToDb(status: string): TimelineEventStatus {
+  switch (status.toLowerCase()) {
+    case 'pending': return TimelineEventStatus.PENDING
+    case 'in_progress': return TimelineEventStatus.IN_PROGRESS
+    case 'completed': return TimelineEventStatus.COMPLETED
+    default: return TimelineEventStatus.PENDING
+  }
+}
+
+// Map database enum values to frontend values
+function mapStatusFromDb(status: TimelineEventStatus | null | undefined): 'pending' | 'in_progress' | 'completed' {
+  if (!status) return 'pending'
+  switch (status) {
+    case TimelineEventStatus.PENDING: return 'pending'
+    case TimelineEventStatus.IN_PROGRESS: return 'in_progress'
+    case TimelineEventStatus.COMPLETED: return 'completed'
+    default: return 'pending'
+  }
+}
 
 // GET /api/projects/[id] - Get individual project
 export async function GET(
@@ -28,7 +49,17 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(project)
+    // Convert timeline event status from database enum to frontend format
+    const projectWithMappedStatus = {
+      ...project,
+      timelineEvents: project.timelineEvents.map(event => ({
+        ...event,
+        status: mapStatusFromDb(event.status),
+        date: event.date.toISOString()
+      }))
+    }
+
+    return NextResponse.json(projectWithMappedStatus)
   } catch (error) {
     console.error('Project GET error:', error)
     return NextResponse.json(
@@ -87,7 +118,8 @@ export async function PUT(
             title: event.title,
             description: event.description || null,
             date: new Date(event.date),
-            type: event.type || 'milestone'
+            type: event.type || 'milestone',
+            status: mapStatusToDb(event.status || 'pending')
           }))
 
           // Create timeline events individually (for compatibility)
@@ -111,9 +143,16 @@ export async function PUT(
 
     const { project, timelineEvents: updatedTimelineEvents } = result
 
+    // Convert timeline event status from database enum to frontend format
+    const mappedTimelineEvents = updatedTimelineEvents.map(event => ({
+      ...event,
+      status: mapStatusFromDb(event.status),
+      date: event.date.toISOString()
+    }))
+
     return NextResponse.json({ 
       ...project, 
-      timelineEvents: updatedTimelineEvents 
+      timelineEvents: mappedTimelineEvents 
     })
   } catch (error) {
     console.error('Project PUT error:', error)

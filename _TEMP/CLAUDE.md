@@ -26,8 +26,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ **Complete**: Authentication System, Theme Support, Mobile Responsive
 - ✅ **Complete**: Timeline System, Project Management, Railway Deployment
 - ✅ **Complete**: PostgreSQL Migration and Production Ready
+- ✅ **Enhanced**: Timeline generation now available on both create and edit pages
+- ✅ **Enhanced**: Markdown content fully preserved with rich HTML formatting
+- ✅ **Enhanced**: Timeline events now expandable with chevron controls
 - ✅ **Fixed**: Footer toggle functionality (place_item icon now properly toggles fixed/not-fixed positioning)
 - ✅ **Fixed**: Theme flash issue on client-side rendered pages (Google AdWords page no longer flashes light mode)
+- ✅ **Fixed**: Project deletion now persists in database
 
 ## File Structure
 
@@ -221,6 +225,68 @@ railway variables set DATABASE_URL="postgresql://..."
 - **Issue**: Google AdWords page flashed light theme when in dark mode
 - **Solution**: Modified ThemeProvider to initialize with correct theme from DOM state using lazy state initialization
 - **Impact**: All client-side rendered pages now load with correct theme without flashing
+
+### Timeline Generation on Edit Page
+- **Feature**: Added markdown timeline generation to project edit page
+- **Components**: Integrated MarkdownUploader, TimelineGenerator, and TimelinePreview
+- **API Updates**: Enhanced PUT `/api/projects/[id]` endpoint to handle timeline events
+- **Type Safety**: Created UpdateProjectData interface for proper TypeScript support
+
+### Enhanced Markdown Content Preservation
+- **Issue**: Timeline events only showed H1 headers, losing detailed content
+- **Solution**: Enhanced markdown parser to extract full content under each H1 header
+- **Features**:
+  - New `HeaderWithContent` interface with title, content, and htmlContent
+  - `parseMarkdownHeaders` now captures complete sections
+  - Timeline events preserve all markdown content (lists, links, formatting)
+
+### HTML Formatting for Timeline Descriptions
+- **Feature**: Convert markdown to rich HTML for timeline event descriptions
+- **Conversion**: Full markdown-to-HTML converter supporting:
+  - Headers (H1-H6) with proper hierarchy
+  - Bold, italic, and code formatting
+  - Ordered and unordered lists with indentation
+  - Clickable links opening in new tabs
+  - Code blocks with syntax highlighting
+- **Display**: Timeline events now render formatted HTML instead of plain text
+- **Edit Mode**: Strips HTML tags for clean editing experience
+- **Styling**: Comprehensive CSS for both dark and light themes
+
+### Expandable Timeline Events
+- **Feature**: Collapsible timeline events with chevron icons
+- **UI Elements**:
+  - Individual chevron buttons for each event with description
+  - Smooth rotation animation (180°) when expanding/collapsing
+  - "Expand All" / "Collapse All" bulk controls in header
+- **State Management**: Track expanded events using Set for performance
+- **Animations**: Slide-down animation with opacity transition
+- **Visual Design**: Clean separation between collapsed/expanded states
+
+### Delete Project Persistence Fix
+- **Issue**: Deleted projects reappeared after page refresh
+- **Root Cause**: `deleteProject` function only updated local state, not calling API
+- **Solution**: Updated to call DELETE `/api/projects/[id]` endpoint
+- **Impact**: Project deletions now persist in database
+
+## Key Files Modified Today
+
+### Timeline Generation Enhancement
+- `src/lib/markdownParser.ts` - Enhanced parser with content extraction and HTML conversion
+- `src/components/timeline/TimelineGenerator.tsx` - Updated to use headersWithContent
+- `src/app/dashboard/projects/[id]/edit/page.tsx` - Added timeline generation components
+- `src/app/dashboard/projects/new/page.tsx` - Updated to use enhanced parser
+
+### Timeline Display Enhancement
+- `src/components/timeline/TimelineDisplay.tsx` - Added expandable events with chevrons
+- `src/components/timeline/TimelineEventModal.tsx` - Fixed HTML rendering and editing
+- `src/components/timeline/TimelinePreview.tsx` - Added HTML content rendering
+
+### API Updates
+- `src/app/api/projects/[id]/route.ts` - Enhanced PUT endpoint for timeline events
+- `src/hooks/useProjects.ts` - Fixed deleteProject to call API, added UpdateProjectData type
+
+### Styling
+- `src/app/globals.css` - Added styles for expandable timeline events and HTML content
 
 ## Troubleshooting
 

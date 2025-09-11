@@ -56,7 +56,8 @@ export default function EditProjectPage() {
           title: event.title,
           description: event.description || undefined,
           date: new Date(event.date),
-          type: event.type
+          type: event.type,
+          status: event.status || 'pending'
         }))
         setTimelineEvents(convertedEvents)
       }

@@ -138,6 +138,11 @@ export default function TimelinePreview({
                         {formatDate(event.date)}
                       </span>
                       <span className="event-type">{event.type}</span>
+                      <span className={`event-status status-badge status-${event.status}`}>
+                        {event.status === 'pending' ? 'Pending' : 
+                         event.status === 'in_progress' ? 'In Progress' : 
+                         'Completed'}
+                      </span>
                     </div>
                   </div>
                   
@@ -214,6 +219,27 @@ export default function TimelinePreview({
                           <option value="deadline">Deadline</option>
                           <option value="review">Review</option>
                           <option value="launch">Launch</option>
+                        </select>
+                      )}
+                    </div>
+                    
+                    <div className="expanded-field">
+                      <label className="expanded-label">Status</label>
+                      {readonly ? (
+                        <span className={`expanded-value status-badge status-${event.status}`}>
+                          {event.status === 'pending' ? 'Pending' : 
+                           event.status === 'in_progress' ? 'In Progress' : 
+                           'Completed'}
+                        </span>
+                      ) : (
+                        <select
+                          value={event.status}
+                          onChange={(e) => handleEventEdit(index, 'status', e.target.value)}
+                          className="form-input form-select form-input-sm"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
                         </select>
                       )}
                     </div>

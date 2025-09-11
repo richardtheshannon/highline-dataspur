@@ -8,6 +8,7 @@ export interface ApiTimelineEvent {
   description: string | null
   date: string
   type: string
+  status: 'pending' | 'in_progress' | 'completed'
   createdAt: string
   updatedAt: string
 }

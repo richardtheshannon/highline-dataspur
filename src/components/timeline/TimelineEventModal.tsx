@@ -9,6 +9,7 @@ interface TimelineEvent {
   description: string | null
   date: string
   type: string
+  status: 'pending' | 'in_progress' | 'completed'
   createdAt: string
   updatedAt: string
 }
@@ -33,7 +34,8 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
     title: '',
     description: '',
     date: '',
-    type: 'milestone'
+    type: 'milestone',
+    status: 'pending' as 'pending' | 'in_progress' | 'completed'
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +59,8 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
         title: event.title,
         description: event.description ? stripHtmlTags(event.description) : '',
         date: formattedDate,
-        type: event.type
+        type: event.type,
+        status: event.status || 'pending'
       })
     }
     setMode(initialMode)
@@ -77,7 +80,8 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
         title: formData.title,
         description: formData.description || null,
         date: new Date(formData.date).toISOString(),
-        type: formData.type
+        type: formData.type,
+        status: formData.status
       })
       onClose()
     } catch (err) {
@@ -160,6 +164,15 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
                   {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                 </span>
               </div>
+              
+              <div className="timeline-event-view-section">
+                <h4 className="form-label">Status</h4>
+                <span className={`status-badge status-${event.status}`}>
+                  {event.status === 'pending' ? 'Pending' : 
+                   event.status === 'in_progress' ? 'In Progress' : 
+                   'Completed'}
+                </span>
+              </div>
 
               <div className="modal-actions">
                 <button
@@ -223,6 +236,23 @@ const TimelineEventModal: React.FC<TimelineEventModalProps> = ({
                   <option value="meeting">Meeting</option>
                   <option value="deadline">Deadline</option>
                   <option value="release">Release</option>
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label className="form-label" htmlFor="event-status">
+                  Status *
+                </label>
+                <select
+                  id="event-status"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pending' | 'in_progress' | 'completed' })}
+                  className="form-input form-select"
+                  required
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
                 </select>
               </div>
 

@@ -9,6 +9,7 @@ interface TimelineEvent {
   description: string | null
   date: string
   type: string
+  status: 'pending' | 'in_progress' | 'completed'
   project: {
     id: string
     name: string

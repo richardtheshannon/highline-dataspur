@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, TimelineEventStatus } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 
 const prisma = new PrismaClient()
+
+// Map frontend status values to database enum values
+function mapStatusToDb(status: string): TimelineEventStatus {
+  switch (status.toLowerCase()) {
+    case 'pending': return TimelineEventStatus.PENDING
+    case 'in_progress': return TimelineEventStatus.IN_PROGRESS
+    case 'completed': return TimelineEventStatus.COMPLETED
+    default: return TimelineEventStatus.PENDING
+  }
+}
+
+// Map database enum values to frontend values
+function mapStatusFromDb(status: TimelineEventStatus | null | undefined): 'pending' | 'in_progress' | 'completed' {
+  if (!status) return 'pending'
+  switch (status) {
+    case TimelineEventStatus.PENDING: return 'pending'
+    case TimelineEventStatus.IN_PROGRESS: return 'in_progress'
+    case TimelineEventStatus.COMPLETED: return 'completed'
+    default: return 'pending'
+  }
+}
 
 // GET /api/projects - Get all projects with relations
 export async function GET(request: NextRequest) {
@@ -41,7 +62,17 @@ export async function GET(request: NextRequest) {
     console.log(`Found ${projects.length} projects`)
     console.log('Projects data:', projects)
     
-    return NextResponse.json(projects)
+    // Convert timeline event status from database enum to frontend format
+    const projectsWithMappedStatus = projects.map(project => ({
+      ...project,
+      timelineEvents: project.timelineEvents.map(event => ({
+        ...event,
+        status: mapStatusFromDb(event.status),
+        date: event.date.toISOString()
+      }))
+    }))
+    
+    return NextResponse.json(projectsWithMappedStatus)
   } catch (error) {
     console.error('Projects GET error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
@@ -96,7 +127,8 @@ export async function POST(request: NextRequest) {
           title: event.title,
           description: event.description || null,
           date: new Date(event.date),
-          type: event.type || 'milestone'
+          type: event.type || 'milestone',
+          status: mapStatusToDb(event.status || 'pending')
         }))
 
         // Create timeline events individually (SQLite compatibility)
@@ -113,9 +145,16 @@ export async function POST(request: NextRequest) {
 
     const { project, timelineEvents: createdTimelineEvents } = result
 
+    // Convert timeline event status from database enum to frontend format
+    const mappedTimelineEvents = createdTimelineEvents.map(event => ({
+      ...event,
+      status: mapStatusFromDb(event.status),
+      date: event.date.toISOString()
+    }))
+
     return NextResponse.json({ 
       ...project, 
-      timelineEvents: createdTimelineEvents 
+      timelineEvents: mappedTimelineEvents 
     }, { status: 201 })
   } catch (error) {
     console.error('Projects POST error:', error)

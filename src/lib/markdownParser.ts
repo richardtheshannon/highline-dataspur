@@ -3,6 +3,7 @@ export interface TimelineEvent {
   description?: string
   date: Date
   type: string
+  status: 'pending' | 'in_progress' | 'completed'
 }
 
 export interface HeaderWithContent {
@@ -148,14 +149,19 @@ export function generateTimelineEvents(
   const events: TimelineEvent[] = []
   
   headersWithContent.forEach((headerData, index) => {
+    // If spacingDays is 0 (None), use a placeholder date or the same startDate for all
     const eventDate = new Date(startDate)
-    eventDate.setDate(startDate.getDate() + (index * spacingDays))
+    if (spacingDays > 0) {
+      eventDate.setDate(startDate.getDate() + (index * spacingDays))
+    }
+    // When spacingDays is 0, all events will have the same date (startDate)
     
     events.push({
       title: headerData.title,
       description: headerData.htmlContent || headerData.content || `Generated from markdown H1 header: "${headerData.title}"`,
       date: eventDate,
-      type: 'milestone'
+      type: 'milestone',
+      status: 'pending'
     })
   })
 
@@ -175,14 +181,19 @@ export function generateTimelineEventsFromHeaders(
   const events: TimelineEvent[] = []
   
   headers.forEach((header, index) => {
+    // If spacingDays is 0 (None), use a placeholder date or the same startDate for all
     const eventDate = new Date(startDate)
-    eventDate.setDate(startDate.getDate() + (index * spacingDays))
+    if (spacingDays > 0) {
+      eventDate.setDate(startDate.getDate() + (index * spacingDays))
+    }
+    // When spacingDays is 0, all events will have the same date (startDate)
     
     events.push({
       title: header,
       description: `Generated from markdown H1 header: "${header}"`,
       date: eventDate,
-      type: 'milestone'
+      type: 'milestone',
+      status: 'pending'
     })
   })
 

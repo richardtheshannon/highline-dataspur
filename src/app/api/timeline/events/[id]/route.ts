@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { TimelineEventStatus } from '@prisma/client'
+
+// Map frontend status values to database enum values
+function mapStatusToDb(status: string): TimelineEventStatus {
+  switch (status.toLowerCase()) {
+    case 'pending': return TimelineEventStatus.PENDING
+    case 'in_progress': return TimelineEventStatus.IN_PROGRESS
+    case 'completed': return TimelineEventStatus.COMPLETED
+    default: return TimelineEventStatus.PENDING
+  }
+}
+
+// Map database enum values to frontend values
+function mapStatusFromDb(status: TimelineEventStatus | null | undefined): 'pending' | 'in_progress' | 'completed' {
+  if (!status) return 'pending'
+  switch (status) {
+    case TimelineEventStatus.PENDING: return 'pending'
+    case TimelineEventStatus.IN_PROGRESS: return 'in_progress'
+    case TimelineEventStatus.COMPLETED: return 'completed'
+    default: return 'pending'
+  }
+}
 
 // GET /api/timeline/events/[id] - Get a single timeline event
 export async function GET(
@@ -28,7 +50,14 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(event)
+    // Convert timeline event status from database enum to frontend format
+    const eventWithMappedStatus = {
+      ...event,
+      status: mapStatusFromDb(event.status),
+      date: event.date.toISOString()
+    }
+
+    return NextResponse.json(eventWithMappedStatus)
   } catch (error) {
     console.error('Error fetching timeline event:', error)
     return NextResponse.json(
@@ -62,11 +91,19 @@ export async function PUT(
         title: body.title,
         description: body.description || null,
         date: new Date(body.date),
-        type: body.type
+        type: body.type,
+        status: body.status ? mapStatusToDb(body.status) : undefined
       }
     })
 
-    return NextResponse.json(updatedEvent)
+    // Convert timeline event status from database enum to frontend format
+    const eventWithMappedStatus = {
+      ...updatedEvent,
+      status: mapStatusFromDb(updatedEvent.status),
+      date: updatedEvent.date.toISOString()
+    }
+
+    return NextResponse.json(eventWithMappedStatus)
   } catch (error) {
     console.error('Error updating timeline event:', error)
     
