@@ -122,9 +122,15 @@ export function useProjects() {
 
   const deleteProject = async (projectId: string) => {
     try {
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 500))
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete project: ${response.status}`)
+      }
       
+      // Update local state after successful API call
       setProjects(prev => prev.filter(project => project.id !== projectId))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete project')
