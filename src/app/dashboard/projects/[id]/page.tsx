@@ -8,7 +8,7 @@ import TimelineDisplay from '@/components/timeline/TimelineDisplay'
 export default function ProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { projects, loading, error, deleteProject, updateProject } = useProjects()
+  const { projects, loading, error, deleteProject, updateProject, refetch } = useProjects()
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   
   const projectId = params?.id as string
@@ -398,7 +398,7 @@ export default function ProjectDetailPage() {
               timelineEvents={project.timelineEvents || []} 
               onEventsUpdate={() => {
                 // Refresh the project data when timeline events change
-                window.location.reload()
+                refetch()
               }}
             />
           </div>

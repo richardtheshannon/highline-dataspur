@@ -29,6 +29,12 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
   const [deleteAllLoading, setDeleteAllLoading] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+
+  // Update events when parent passes new timelineEvents
+  React.useEffect(() => {
+    setEvents(timelineEvents)
+  }, [timelineEvents])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -196,6 +202,47 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
     }
   }
 
+  // Quick status update handler
+  const handleQuickStatusUpdate = async (eventId: string, newStatus: 'pending' | 'in_progress' | 'completed') => {
+    const event = events.find(e => e.id === eventId)
+    if (!event) return
+
+    setUpdatingStatus(eventId)
+    try {
+      const response = await fetch(`/api/timeline/events/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          type: event.type,
+          status: newStatus
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update timeline event status')
+      }
+
+      const savedEvent = await response.json()
+      
+      // Update local state with the response from the server
+      setEvents(events.map(e => e.id === savedEvent.id ? savedEvent : e))
+      
+      // Don't call onEventsUpdate for quick status changes - we handle it locally
+      // This prevents unnecessary page refetch
+    } catch (error) {
+      console.error('Error updating timeline event status:', error)
+      // Revert status on error
+      alert('Failed to update status. Please try again.')
+    } finally {
+      setUpdatingStatus(null)
+    }
+  }
+
   if (!events || events.length === 0) {
     return (
       <div className="form-section">
@@ -330,11 +377,18 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
                   <span className="timeline-event-type">
                     {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                   </span>
-                  <span className={`timeline-event-status status-badge status-${event.status}`}>
-                    {event.status === 'pending' ? 'Pending' : 
-                     event.status === 'in_progress' ? 'In Progress' : 
-                     'Completed'}
-                  </span>
+                  <select
+                    value={event.status}
+                    onChange={(e) => handleQuickStatusUpdate(event.id, e.target.value as 'pending' | 'in_progress' | 'completed')}
+                    className={`timeline-status-dropdown status-${event.status}`}
+                    onClick={(e) => e.stopPropagation()}
+                    disabled={updatingStatus === event.id}
+                    style={{ opacity: updatingStatus === event.id ? 0.6 : 1 }}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
                   <span className="timeline-event-created">
                     Added {new Date(event.createdAt).toLocaleDateString()}
                   </span>

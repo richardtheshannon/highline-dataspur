@@ -4572,6 +4572,64 @@ body.has-fixed-footer .content {
   gap: 1rem;
 }
 
+/* Timeline Status Dropdown */
+.timeline-status-dropdown {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.75rem;
+  min-width: 120px;
+}
+
+.timeline-status-dropdown:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-status-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+/* Status-specific dropdown styling */
+.timeline-status-dropdown.status-pending {
+  background-color: #6b7280;
+  color: white;
+  border-color: #4b5563;
+}
+
+.timeline-status-dropdown.status-in_progress {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+.timeline-status-dropdown.status-completed {
+  background-color: #10b981;
+  color: white;
+  border-color: #059669;
+}
+
+/* Dark mode adjustments */
+.dark .timeline-status-dropdown {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23ccc' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+}
+
+.dark .timeline-status-dropdown option {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 .timeline-event-actions {
   display: flex;
   gap: 0.25rem;
