@@ -51,7 +51,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  projectsOwned Project[] @relation("ProjectOwner")
+  projectsOwned   Project[]          @relation("ProjectOwner")
+  apiConfigurations ApiConfiguration[] @relation("UserApiConfigs")
 }
 
 model Project {
@@ -88,4 +89,38 @@ model TimelineEvent {
   updatedAt   DateTime            @updatedAt
   
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+enum ApiProvider {
+  GOOGLE_ADWORDS
+  FACEBOOK_ADS
+  TWITTER_ADS
+  LINKEDIN_ADS
+}
+
+enum ApiConfigStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+model ApiConfiguration {
+  id            String          @id @default(cuid())
+  userId        String
+  provider      ApiProvider
+  name          String
+  clientId      String
+  clientSecret  String          // Encrypted
+  developerToken String?        // Encrypted
+  apiKey        String?         // Encrypted
+  refreshToken  String?         // Encrypted
+  accessToken   String?         // Encrypted
+  tokenExpiry   DateTime?
+  status        ApiConfigStatus @default(INACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  user          User            @relation("UserApiConfigs", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, provider])
 }

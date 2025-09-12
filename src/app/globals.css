@@ -2523,6 +2523,25 @@ body.has-fixed-footer .content {
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
+/* API Configuration Status Badges */
+.status-badge.status-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-badge.status-inactive {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-muted);
+    border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.status-badge.status-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 .priority-badge.bg-gray-100 {
     background: rgba(107, 114, 128, 0.1);
     color: var(--text-muted);
