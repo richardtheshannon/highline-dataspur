@@ -1,6 +1,8 @@
 'use client'
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { platformPerformanceDoc } from '@/data/helpDocumentation'
 
 const data = [
   {
@@ -93,7 +95,12 @@ export default function PlatformPerformanceChart() {
   return (
     <div className="chart-container">
       <div className="chart-header">
-        <h2 className="chart-title">Platform Performance Analytics</h2>
+        <DocumentedTitle 
+          className="chart-title"
+          title="Platform Performance Analytics"
+          documentation={platformPerformanceDoc}
+          as="h2"
+        />
         <p className="chart-subtitle">Monthly engagement metrics across advertising platforms</p>
       </div>
       

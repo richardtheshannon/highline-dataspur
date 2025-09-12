@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { overdueEventsDoc } from '@/data/helpDocumentation'
 
 interface OverdueEvent {
   id: string
@@ -107,7 +109,11 @@ export default function OverdueEvents() {
         <span className="material-symbols-outlined" style={{ color: '#ff6b6b' }}>
           warning
         </span>
-        <h3>Overdue Events</h3>
+        <DocumentedTitle 
+          title="Overdue Events"
+          documentation={overdueEventsDoc}
+          as="h3"
+        />
         {events.length > 0 && (
           <span className="overdue-count">
             {events.length} overdue

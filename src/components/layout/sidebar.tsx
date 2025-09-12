@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
+import { useHelpDocumentation } from '@/contexts/HelpDocumentationContext'
 
 interface SubNavItem {
   title: string
@@ -65,6 +66,22 @@ export default function Sidebar() {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const router = useRouter()
   const { data: session } = useSession()
+  
+  // Help documentation context (will be available when dashboard layout loads)
+  const [helpEnabled, setHelpEnabled] = useState(false)
+  
+  // Try to use help documentation context if available
+  useEffect(() => {
+    try {
+      // This will only work after the HelpDocumentationProvider is mounted
+      const savedHelpState = localStorage.getItem('help-documentation-enabled')
+      if (savedHelpState) {
+        setHelpEnabled(JSON.parse(savedHelpState))
+      }
+    } catch (error) {
+      console.log('Help documentation localStorage not available yet')
+    }
+  }, [])
 
   // Load sidebar state from localStorage on component mount
   useEffect(() => {
@@ -432,8 +449,22 @@ export default function Sidebar() {
             <button className="header-icon">
               <span className="material-symbols-outlined">settings</span>
             </button>
-            <button className="header-icon">
-              <span className="material-symbols-outlined">info</span>
+            <button 
+              className={`header-icon ${helpEnabled ? 'active' : ''}`}
+              onClick={() => {
+                const newValue = !helpEnabled
+                setHelpEnabled(newValue)
+                localStorage.setItem('help-documentation-enabled', JSON.stringify(newValue))
+                // Dispatch custom event to notify other components
+                window.dispatchEvent(new CustomEvent('help-documentation-changed', { 
+                  detail: { enabled: newValue } 
+                }))
+              }}
+              title={helpEnabled ? 'Disable Help & Documentation' : 'Enable Help & Documentation'}
+            >
+              <span className="material-symbols-outlined">
+                info
+              </span>
             </button>
             <button 
               className="header-icon"

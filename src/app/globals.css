@@ -6900,3 +6900,245 @@ body.has-fixed-footer .content {
 .timeline-html-content a:hover {
   border-bottom-color: var(--accent);
 }
+
+/* Help & Documentation System Styles */
+
+/* Active state for help toggle icon */
+.header-icon.active {
+  background: transparent !important;
+  color: var(--accent) !important;
+}
+
+.header-icon.active:hover {
+  background: var(--hover-bg) !important;
+  color: var(--accent) !important;
+}
+
+/* Fix Material Icons text selection issue */
+.material-symbols-outlined {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Ensure no text selection on header icons */
+.header-icon {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Documented titles that become clickable when help is enabled */
+.documented-title.clickable {
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.documented-title.clickable:hover {
+  background-color: var(--hover-bg);
+  color: var(--accent);
+}
+
+.documented-title.clickable:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Help indicator icon */
+.help-indicator {
+  margin-left: 0.5rem;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  color: var(--accent);
+}
+
+.documented-title.clickable:hover .help-indicator {
+  opacity: 1;
+}
+
+.help-indicator .material-symbols-outlined {
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+/* Help drawer backdrop */
+.help-drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Help drawer */
+.help-drawer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 400px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  z-index: 9999;
+  overflow-y: auto;
+  animation: slideInLeft 0.3s ease-out;
+  box-shadow: 2px 0 8px var(--shadow);
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* Help drawer header */
+.help-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.help-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.help-drawer-title h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.help-drawer-title .material-symbols-outlined {
+  color: var(--accent);
+  font-size: 1.5rem;
+}
+
+.help-drawer-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.help-drawer-close:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+/* Help drawer content */
+.help-drawer-content {
+  padding: 1.5rem;
+}
+
+/* Section header */
+.help-section-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.help-section-header h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.help-section-description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Section items */
+.help-section-item {
+  margin-bottom: 2rem;
+}
+
+.help-section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.help-section-label .material-symbols-outlined {
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.help-section-item p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Help lists */
+.help-list {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.help-list li {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.help-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .help-drawer {
+    width: 90vw;
+    max-width: 400px;
+  }
+  
+  .help-drawer-header {
+    padding: 1rem;
+  }
+  
+  .help-drawer-content {
+    padding: 1rem;
+  }
+  
+  .help-section-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .help-section-item {
+    margin-bottom: 1.5rem;
+  }
+}

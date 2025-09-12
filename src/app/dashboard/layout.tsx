@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
 import Footer from '@/components/layout/footer'
+import HelpDocumentationProvider from '@/contexts/HelpDocumentationContext'
+import HelpDocumentationDrawer from '@/components/help/HelpDocumentationDrawer'
 
 export default function DashboardLayout({
   children,
@@ -34,17 +36,20 @@ export default function DashboardLayout({
   }, [])
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      <Sidebar />
-      
-      <main className={`content ${isSidebarExpanded ? 'menu-expanded' : ''}`}>
-        <div className="safe-margin">
-          {children}
-        </div>
-      </main>
-      
-      <Footer />
-    </div>
+    <HelpDocumentationProvider>
+      <div className="min-h-screen">
+        <Header />
+        <Sidebar />
+        
+        <main className={`content ${isSidebarExpanded ? 'menu-expanded' : ''}`}>
+          <div className="safe-margin">
+            {children}
+          </div>
+        </main>
+        
+        <Footer />
+        <HelpDocumentationDrawer />
+      </div>
+    </HelpDocumentationProvider>
   )
 }

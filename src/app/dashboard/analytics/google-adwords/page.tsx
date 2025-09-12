@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { keyMetricsDoc, connectionStatusDoc } from '@/data/helpDocumentation'
 
 interface Campaign {
   id: string
@@ -222,10 +224,13 @@ export default function GoogleAdWordsAnalytics() {
           {/* Connection Status Card */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
-              <h3>
-                <span className="material-symbols-outlined">link</span>
-                Connection Status
-              </h3>
+              <DocumentedTitle 
+                className=""
+                icon="link"
+                title="Connection Status"
+                documentation={connectionStatusDoc}
+                as="h3"
+              />
             </div>
             <div className="card-content" style={{ padding: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -256,10 +261,13 @@ export default function GoogleAdWordsAnalytics() {
           {/* Key Metrics Card */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
-              <h3>
-                <span className="material-symbols-outlined">analytics</span>
-                Key Metrics
-              </h3>
+              <DocumentedTitle 
+                className=""
+                icon="analytics"
+                title="Key Metrics"
+                documentation={keyMetricsDoc}
+                as="h3"
+              />
               <select 
                 className="form-select"
                 value={timeRange}

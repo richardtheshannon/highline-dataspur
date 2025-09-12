@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { tomorrowMilestonesDoc } from '@/data/helpDocumentation'
 
 interface TimelineEvent {
   id: string
@@ -115,7 +117,11 @@ export default function TomorrowMilestones() {
         <span className="material-symbols-outlined" style={{ color: '#ffd43b' }}>
           upcoming
         </span>
-        <h3>Tomorrow's Milestones</h3>
+        <DocumentedTitle 
+          title="Tomorrow's Milestones"
+          documentation={tomorrowMilestonesDoc}
+          as="h3"
+        />
         <span className="milestones-date">{getTomorrowDate()}</span>
         <button 
           className="milestones-collapse-btn"

@@ -12,6 +12,8 @@ import OverdueEvents from '@/components/dashboard/OverdueEvents'
 import PlatformPerformanceChart from '@/components/dashboard/PlatformPerformanceChart'
 import SpendPerformanceChart from '@/components/dashboard/SpendPerformanceChart'
 import MarketingPieChart from '@/components/dashboard/MarketingPieChart'
+import HelpDocumentationProvider from '@/contexts/HelpDocumentationContext'
+import HelpDocumentationDrawer from '@/components/help/HelpDocumentationDrawer'
 
 export default function Home() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
@@ -66,44 +68,47 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      <Sidebar />
-      
-      <main className={`content ${isSidebarExpanded ? 'menu-expanded' : ''}`}>
-        <div className="safe-margin">
-          <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'start' }}>
-            {/* Left Column - 1/3 */}
-            <div className="main-content-left">
-              {/* Marketing Performance Chart */}
-              <MarketingPieChart />
-              
-              {/* Daily Manifest Card */}
-              <DailyManifest />
-              
-              {/* Tomorrow's Milestones Card */}
-              <div style={{ marginTop: '1.5rem' }}>
-                <TomorrowMilestones />
+    <HelpDocumentationProvider>
+      <div className="min-h-screen">
+        <Header />
+        <Sidebar />
+        
+        <main className={`content ${isSidebarExpanded ? 'menu-expanded' : ''}`}>
+          <div className="safe-margin">
+            <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'start' }}>
+              {/* Left Column - 1/3 */}
+              <div className="main-content-left">
+                {/* Marketing Performance Chart */}
+                <MarketingPieChart />
+                
+                {/* Daily Manifest Card */}
+                <DailyManifest />
+                
+                {/* Tomorrow's Milestones Card */}
+                <div style={{ marginTop: '1.5rem' }}>
+                  <TomorrowMilestones />
+                </div>
+                
+                {/* Overdue Events Card */}
+                <div style={{ marginTop: '1.5rem' }}>
+                  <OverdueEvents />
+                </div>
+                
+                <p style={{ textAlign: 'right', marginTop: '2rem' }}>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
               </div>
-              
-              {/* Overdue Events Card */}
-              <div style={{ marginTop: '1.5rem' }}>
-                <OverdueEvents />
-              </div>
-              
-              <p style={{ textAlign: 'right', marginTop: '2rem' }}>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-            </div>
 
-            {/* Right Column - 2/3 */}
-            <div className="main-content-right">
-              <PlatformPerformanceChart />
-              <SpendPerformanceChart />
+              {/* Right Column - 2/3 */}
+              <div className="main-content-right">
+                <PlatformPerformanceChart />
+                <SpendPerformanceChart />
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-      
-      <Footer />
-    </div>
+        </main>
+        
+        <Footer />
+        <HelpDocumentationDrawer />
+      </div>
+    </HelpDocumentationProvider>
   )
 }

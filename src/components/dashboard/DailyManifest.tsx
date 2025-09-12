@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { dailyManifestDoc } from '@/data/helpDocumentation'
 
 interface TimelineEvent {
   id: string
@@ -106,7 +108,11 @@ export default function DailyManifest() {
         <span className="material-symbols-outlined" style={{ color: 'var(--accent)' }}>
           calendar_today
         </span>
-        <h3>Daily Manifest</h3>
+        <DocumentedTitle 
+          title="Daily Manifest"
+          documentation={dailyManifestDoc}
+          as="h3"
+        />
         <span className="manifest-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
       </div>
 

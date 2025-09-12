@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useProjects, ApiProject } from '@/hooks/useProjects'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { projectStatisticsDoc, filterSearchDoc, projectsTableDoc } from '@/data/helpDocumentation'
 
 export interface Project {
   id: string
@@ -247,10 +249,12 @@ export default function ProjectsContent() {
 
         {/* Statistics Cards */}
         <div className="form-section">
-          <h3 className="form-section-title">
-            <span className="material-symbols-outlined">analytics</span>
-            Project Statistics
-          </h3>
+          <DocumentedTitle 
+            className="form-section-title"
+            icon="analytics"
+            title="Project Statistics"
+            documentation={projectStatisticsDoc}
+          />
           <div className="stats-grid">
             <div className="stats-card">
               <div className="stats-value">{statistics.total}</div>
@@ -277,10 +281,12 @@ export default function ProjectsContent() {
 
         {/* Filters and Search */}
         <div className="form-section">
-          <h3 className="form-section-title">
-            <span className="material-symbols-outlined">filter_list</span>
-            Filter & Search
-          </h3>
+          <DocumentedTitle 
+            className="form-section-title"
+            icon="filter_list"
+            title="Filter & Search"
+            documentation={filterSearchDoc}
+          />
           <div className="filter-controls">
             <div className="filter-selects-row">
               <select
@@ -334,10 +340,12 @@ export default function ProjectsContent() {
 
         {/* Projects Table */}
         <div className="form-section">
-          <h3 className="form-section-title">
-            <span className="material-symbols-outlined">folder_open</span>
-            All Projects
-          </h3>
+          <DocumentedTitle 
+            className="form-section-title"
+            icon="folder_open"
+            title="All Projects"
+            documentation={projectsTableDoc}
+          />
           <div className="projects-table-container">
             <div className="table-wrapper">
               <table className="projects-table">
