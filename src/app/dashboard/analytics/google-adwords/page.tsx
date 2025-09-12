@@ -432,7 +432,7 @@ export default function GoogleAdWordsAnalytics() {
                       formatter={(value, name) => {
                         if (name === 'cost') return [formatCurrency(Number(value)), 'Cost']
                         if (name === 'ctr' || name === 'conversionRate') return [`${Number(value).toFixed(2)}%`, name === 'ctr' ? 'CTR' : 'Conversion Rate']
-                        return [formatNumber(Number(value)), name.charAt(0).toUpperCase() + name.slice(1)]
+                        return [formatNumber(Number(value)), String(name).charAt(0).toUpperCase() + String(name).slice(1)]
                       }}
                       labelFormatter={(label) => `Date: ${label}`}
                     />
