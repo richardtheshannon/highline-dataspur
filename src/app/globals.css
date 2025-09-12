@@ -7142,3 +7142,55 @@ body.has-fixed-footer .content {
     margin-bottom: 1.5rem;
   }
 }
+
+/* Timeline Delete All Styles */
+.timeline-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.timeline-delete-all-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.timeline-delete-all-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+  transform: translateY(-1px);
+}
+
+/* Modal Close Button Fix */
+.modal-close-btn {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.modal-close-btn .material-symbols-outlined {
+  font-size: 24px;
+  color: var(--text-secondary);
+}
+
+/* Modal Footer for Delete Confirmation */
+.modal-footer {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  justify-content: flex-end;
+}

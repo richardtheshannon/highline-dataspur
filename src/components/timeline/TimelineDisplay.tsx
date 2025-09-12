@@ -27,6 +27,8 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
   const [events, setEvents] = useState(timelineEvents)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -123,6 +125,42 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (!events[0]?.projectId) {
+      console.error('No project ID found')
+      return
+    }
+
+    setDeleteAllLoading(true)
+    try {
+      const response = await fetch(`/api/timeline/events/bulk-delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ projectId: events[0].projectId })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete all timeline events')
+      }
+
+      // Update local state
+      setEvents([])
+      setShowDeleteAllModal(false)
+      
+      // Notify parent component if callback provided
+      if (onEventsUpdate) {
+        onEventsUpdate()
+      }
+    } catch (error) {
+      console.error('Error deleting all timeline events:', error)
+      alert('Failed to delete all timeline events')
+    } finally {
+      setDeleteAllLoading(false)
+    }
+  }
+
   const handleSave = async (updatedEvent: TimelineEvent) => {
     try {
       const response = await fetch(`/api/timeline/events/${updatedEvent.id}`, {
@@ -188,26 +226,36 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
             <span className="material-symbols-outlined">timeline</span>
             Project Timeline Events ({events.length})
           </h3>
-          {events.some(e => e.description) && (
-            <div className="timeline-expand-controls">
-              <button
-                onClick={expandAllEvents}
-                className="timeline-control-btn"
-                title="Expand all events"
-              >
-                <span className="material-symbols-outlined">unfold_more</span>
-                Expand All
-              </button>
-              <button
-                onClick={collapseAllEvents}
-                className="timeline-control-btn"
-                title="Collapse all events"
-              >
-                <span className="material-symbols-outlined">unfold_less</span>
-                Collapse All
-              </button>
-            </div>
-          )}
+          <div className="timeline-header-controls">
+            {events.some(e => e.description) && (
+              <div className="timeline-expand-controls">
+                <button
+                  onClick={expandAllEvents}
+                  className="timeline-control-btn"
+                  title="Expand all events"
+                >
+                  <span className="material-symbols-outlined">unfold_more</span>
+                  Expand All
+                </button>
+                <button
+                  onClick={collapseAllEvents}
+                  className="timeline-control-btn"
+                  title="Collapse all events"
+                >
+                  <span className="material-symbols-outlined">unfold_less</span>
+                  Collapse All
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setShowDeleteAllModal(true)}
+              className="timeline-control-btn timeline-delete-all-btn"
+              title="Delete all timeline events"
+            >
+              <span className="material-symbols-outlined">delete_sweep</span>
+              Delete All
+            </button>
+          </div>
         </div>
         
         <div className="timeline-events-container">
@@ -307,6 +355,70 @@ const TimelineDisplay: React.FC<TimelineDisplayProps> = ({ timelineEvents, onEve
         onSave={handleSave}
         mode={modalMode}
       />
+
+      {/* Delete All Confirmation Modal */}
+      {showDeleteAllModal && (
+        <div className="modal-backdrop" onClick={() => !deleteAllLoading && setShowDeleteAllModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                <span className="material-symbols-outlined text-red-500">warning</span>
+                Delete All Timeline Events
+              </h2>
+              {!deleteAllLoading && (
+                <button
+                  onClick={() => setShowDeleteAllModal(false)}
+                  className="modal-close-btn"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              )}
+            </div>
+            
+            <div className="modal-body">
+              <p className="text-gray-300 mb-4">
+                Are you sure you want to delete all {events.length} timeline event{events.length !== 1 ? 's' : ''}?
+              </p>
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                <p className="text-red-400 font-semibold mb-2">
+                  <span className="material-symbols-outlined align-middle mr-2">dangerous</span>
+                  This action cannot be undone!
+                </p>
+                <p className="text-gray-400 text-sm">
+                  All timeline events for this project will be permanently removed. You will need to regenerate them from a markdown file if needed.
+                </p>
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button
+                onClick={() => setShowDeleteAllModal(false)}
+                disabled={deleteAllLoading}
+                className="form-btn form-btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAll}
+                disabled={deleteAllLoading}
+                className="form-btn form-btn-danger flex items-center gap-2"
+              >
+                {deleteAllLoading ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">refresh</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">delete_forever</span>
+                    Delete All Events
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

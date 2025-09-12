@@ -35,6 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ **Enhanced**: Timeline Event Spacing - Added "None" option to skip calendar date calculations
 - ✅ **Enhanced**: Timeline Event Status System - Full status management for individual milestones
 - ✅ **Enhanced**: Status tracking with Pending/In Progress/Completed options for all timeline events
+- ✅ **Enhanced**: Timeline Bulk Deletion - Delete All button with safety confirmation for removing all timeline events at once
 
 ## File Structure
 
@@ -573,4 +574,184 @@ railway variables set DATABASE_URL="postgresql://..."
 - ✅ **Complete**: ESLint configuration optimized for CI/CD
 - ✅ **Verified**: Production application running successfully
 
-This application is production-ready with a complete authentication system, project management features, and Railway deployment configuration.
+## Recent Updates (2025-09-12) - Delete All Timeline Events Feature
+
+### Timeline Bulk Deletion Enhancement
+- **Feature**: Added "Delete All" button for timeline events with safety confirmation modal
+- **Location**: Project detail page (`/dashboard/projects/[id]`) timeline section header
+- **Safety**: Confirmation modal with clear warnings and event count display
+- **Implementation**: Frontend component updates with new API endpoint for bulk deletion
+
+### Delete All Timeline Events Components
+- **UI Button**: Red-themed "Delete All" button with delete_sweep icon in timeline header
+- **Confirmation Modal**: 
+  - Shows exact count of events to be deleted
+  - Warning message stating action cannot be undone
+  - Cancel and Delete All Events action buttons
+  - Loading state during deletion process
+- **API Endpoint**: `/api/timeline/events/bulk-delete`
+  - Verifies user ownership of project
+  - Deletes all timeline events for specified project
+  - Returns count of deleted events
+
+### Files Modified (Delete All Timeline Events)
+- `src/components/timeline/TimelineDisplay.tsx` - Added Delete All button, modal, and handler functions
+- `src/app/api/timeline/events/bulk-delete/route.ts` - New API endpoint for bulk deletion
+- `src/app/globals.css` - Added styles for Delete All button and confirmation modal
+
+### User Experience Features
+- **Visual Distinction**: Red color scheme clearly indicates destructive action
+- **Safety First**: Requires deliberate confirmation through modal interaction
+- **User Feedback**: Loading states and success confirmation
+- **Access Control**: Only project owner can delete timeline events
+
+## Recent Updates (2025-09-12) - Help & Documentation System Implementation
+
+### Comprehensive Help & Documentation System
+- **Feature**: Interactive help system with clickable titles and detailed documentation drawer
+- **User Control**: Toggle-based system using the info icon in the sidebar header for intuitive enable/disable
+- **Coverage**: Complete documentation across all major application components and data cards
+
+### Architecture & Components
+- **Context System**: React Context API for global help state management with localStorage persistence
+- **DocumentedTitle Component**: Reusable component that makes any title clickable when help is enabled
+- **Left-Hand Drawer**: Slide-in documentation panel with comprehensive component explanations
+- **Visual Indicators**: Help icons appear next to documented titles when system is enabled
+
+### Help Toggle Implementation
+- **Location**: Info icon in expanded sidebar header (next to settings and user icons)
+- **Visual States**: 
+  - Disabled: Gray info icon with normal styling
+  - Enabled: Accent color info icon with hover effects
+- **Persistence**: User preference stored in localStorage across sessions
+- **Event System**: Custom events for cross-component communication
+
+### Documentation Content Structure
+Each documented component includes:
+- **Goal**: Purpose and objective of the component
+- **Logic**: How data is processed and displayed
+- **Data Source**: API endpoints, database queries, and data origins  
+- **Calculations**: Specific formulas and computation methods
+- **Filters**: Available user controls and options
+- **Examples**: Real-world usage scenarios and empty states
+
+### Components with Help Documentation
+
+#### Home Dashboard (`/`)
+1. **Platform Performance Analytics**
+   - Monthly engagement metrics across advertising platforms
+   - Recharts integration with trend analysis and platform comparison
+   - Mock data structure for Google AdWords, Facebook, Instagram, TikTok
+
+2. **Daily Manifest**  
+   - Today's scheduled timeline events from `/api/timeline/today`
+   - Time formatting, priority indicators, project relationships
+   - Event types: milestones, tasks, meetings, deadlines, releases
+
+3. **Tomorrow's Milestones**
+   - Critical milestones and deadlines from `/api/timeline/tomorrow`  
+   - Filtered for milestone-type events only (milestones, deadlines, releases)
+   - Collapsible interface with status indicators
+
+4. **Overdue Events**
+   - Past-due items from `/api/timeline/overdue`
+   - Urgency levels based on days overdue and project priority
+   - Smart display limiting (first 3 with "Show More" option)
+
+#### Projects Dashboard (`/dashboard/projects`) 
+1. **Project Statistics**
+   - Real-time project counts by status (Active, Completed, Planning, On Hold)
+   - Status mapping and color-coding system
+   - Total project count and budget aggregation
+
+2. **Filter & Search**
+   - Client-side filtering with multiple criteria (status, priority, type)
+   - Case-insensitive search across names and descriptions  
+   - Combined AND logic for multiple filters
+
+3. **All Projects Table**
+   - Sortable columns with ascending/descending toggle
+   - Progress calculation based on status mapping
+   - Team member display with overflow indicators
+
+#### Analytics Dashboard (`/dashboard/analytics/google-adwords`)
+1. **Connection Status**
+   - Real-time API connection testing with stored credentials
+   - Visual status indicators (Connected/Error/Disconnected)
+   - Integration with API configuration system
+
+2. **Key Metrics**
+   - Google AdWords performance indicators with period comparisons
+   - CTR, CVR, CPC, CPA calculations and formatting
+   - Time range selection with automatic data refresh
+
+### Technical Implementation
+
+#### File Structure Extensions
+```
+src/
+├── contexts/
+│   └── HelpDocumentationContext.tsx    # Global help state management
+├── components/
+│   └── help/
+│       ├── DocumentedTitle.tsx          # Clickable title component  
+│       └── HelpDocumentationDrawer.tsx  # Left-hand documentation panel
+├── data/
+│   └── helpDocumentation.ts             # Comprehensive documentation content
+└── app/globals.css                      # Help system styling and animations
+```
+
+#### Integration Points
+- **Dashboard Layout**: HelpDocumentationProvider wrapper for context access
+- **Home Page**: Standalone provider integration for non-dashboard pages
+- **Sidebar**: Info icon toggle with visual state management
+- **Component Updates**: 8 major components updated with DocumentedTitle integration
+
+### User Experience Features
+- **Intuitive Toggle**: Info icon naturally suggests help/documentation functionality
+- **Visual Feedback**: Clear enabled/disabled states with accent color integration
+- **Smooth Animations**: Slide-in drawer with fade animations and backdrop
+- **Responsive Design**: Mobile-optimized drawer sizing and interaction
+- **Keyboard Accessibility**: Full keyboard navigation and focus management
+- **Performance**: Lazy loading of documentation content and efficient state management
+
+### CSS & Styling Enhancements
+- **Theme Integration**: Uses existing CSS custom properties for consistent theming
+- **Material Icons**: Prevents text selection issues with user-select: none
+- **Clickable States**: Hover effects and focus states for documented titles
+- **Z-Index Management**: Proper layering for drawer and backdrop elements
+- **Mobile Responsiveness**: Adaptive drawer width and header sizing
+
+### Development Considerations
+- **Type Safety**: Comprehensive TypeScript interfaces for documentation structure
+- **Error Handling**: Graceful fallbacks when context is unavailable
+- **Cross-Component Communication**: Custom events for sidebar-to-context communication
+- **Performance**: Minimal bundle impact with selective imports and lazy initialization
+- **Maintainability**: Centralized documentation content for easy updates
+
+### Key Benefits
+1. **User Education**: New users can quickly understand complex application logic
+2. **Transparency**: Clear visibility into data sources, calculations, and business rules
+3. **Onboarding**: Reduces learning curve for sophisticated features
+4. **Documentation**: Living documentation that stays synchronized with code
+5. **Professional Polish**: Enterprise-level help system enhancing overall UX
+
+### Files Created/Modified (Help & Documentation System)
+- `src/contexts/HelpDocumentationContext.tsx` - Global help state management with localStorage
+- `src/components/help/DocumentedTitle.tsx` - Reusable clickable title component
+- `src/components/help/HelpDocumentationDrawer.tsx` - Left-hand documentation panel
+- `src/data/helpDocumentation.ts` - Comprehensive documentation content definitions
+- `src/components/layout/sidebar.tsx` - Info icon toggle integration with visual feedback
+- `src/app/dashboard/layout.tsx` - HelpDocumentationProvider wrapper for dashboard pages
+- `src/app/page.tsx` - Standalone provider integration for home page
+- `src/app/globals.css` - Complete styling system for help components and interactions
+
+### Component Updates (DocumentedTitle Integration)
+- `src/app/dashboard/projects/ProjectsContent.tsx` - Projects statistics, filters, and table
+- `src/app/dashboard/analytics/google-adwords/page.tsx` - Connection status and key metrics
+- `src/components/dashboard/PlatformPerformanceChart.tsx` - Performance analytics chart
+- `src/components/dashboard/DailyManifest.tsx` - Today's timeline events
+- `src/components/dashboard/TomorrowMilestones.tsx` - Tomorrow's milestone tracking  
+- `src/components/dashboard/OverdueEvents.tsx` - Overdue item management
+
+This application is production-ready with a complete authentication system, project management features, Railway deployment configuration, and comprehensive help & documentation system.
