@@ -35,6 +35,14 @@ const navItems: NavItem[] = [
     href: '/dashboard/user-management',
   },
   {
+    title: 'Analytics',
+    icon: 'analytics',
+    subItems: [
+      { title: 'Dashboard', icon: 'dashboard', href: '/dashboard/analytics' },
+      { title: 'Google AdWords', icon: 'ads_click', href: '/dashboard/analytics/google-adwords' },
+    ],
+  },
+  {
     title: 'APIs',
     icon: 'api',
     subItems: [
