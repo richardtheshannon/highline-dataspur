@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient, ApiProvider } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 import { decryptString } from '@/lib/encryption'
+import { logApiActivity, createApiActivity } from '@/lib/apiActivity'
 
 const prisma = new PrismaClient()
 
@@ -42,6 +43,16 @@ export async function GET(request: NextRequest) {
       clientSecret,
       developerToken
     })
+
+    // Log the campaign fetch activity
+    await logApiActivity(createApiActivity.campaignFetch(
+      userId,
+      config.id,
+      ApiProvider.GOOGLE_ADWORDS,
+      true,
+      campaigns.length,
+      `Successfully fetched ${campaigns.length} campaigns`
+    ))
     
     return NextResponse.json({
       campaigns,

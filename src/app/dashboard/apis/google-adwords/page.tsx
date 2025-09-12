@@ -33,6 +33,17 @@ interface Campaign {
   endDate: string
 }
 
+interface ApiActivity {
+  id: string
+  type: string
+  status: string
+  title: string
+  description?: string
+  metadata?: any
+  createdAt: string
+  timeAgo: string
+}
+
 export default function GoogleAdWordsPage() {
   const router = useRouter()
   const [apiKey, setApiKey] = useState('')
@@ -44,20 +55,48 @@ export default function GoogleAdWordsPage() {
   const [testing, setTesting] = useState(false)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [showCampaigns, setShowCampaigns] = useState(false)
+  const [activities, setActivities] = useState<ApiActivity[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
 
   useEffect(() => {
     fetchConfiguration()
+    fetchRecentActivities()
   }, [])
+
+  const fetchRecentActivities = async () => {
+    setActivitiesLoading(true)
+    try {
+      const response = await fetch('/api/apis/google-adwords/activities?limit=5')
+      if (response.ok) {
+        const data = await response.json()
+        setActivities(data.activities || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch activities:', error)
+    } finally {
+      setActivitiesLoading(false)
+    }
+  }
 
   const fetchConfiguration = async () => {
     try {
       const response = await fetch('/api/apis/google-adwords')
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 Fetched configuration:', data) // Debug log
         setConfig(data)
+      } else {
+        console.error('❌ API response not ok:', response.status, response.statusText)
+        // If the response is not ok, check if it's a 404 (no config) vs other errors
+        if (response.status === 404 || response.status === 400) {
+          // No configuration found - keep default state
+          console.log('ℹ️ No configuration found, keeping default state')
+        } else {
+          console.error('❌ Unexpected error response:', await response.text())
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch configuration:', error)
+      console.error('❌ Failed to fetch configuration:', error)
     }
   }
 
@@ -110,8 +149,10 @@ export default function GoogleAdWordsPage() {
       if (result.success) {
         alert(`Connection successful! ${result.details}`)
         await fetchConfiguration() // Refresh config to get updated status
+        await fetchRecentActivities() // Refresh activities to show the test
       } else {
         alert(`Connection failed: ${result.details}`)
+        await fetchRecentActivities() // Refresh activities to show the failed test
       }
     } catch (error) {
       console.error('Test connection error:', error)
@@ -129,6 +170,7 @@ export default function GoogleAdWordsPage() {
         const data = await response.json()
         setCampaigns(data.campaigns)
         setShowCampaigns(true)
+        await fetchRecentActivities() // Refresh activities to show the fetch
       } else {
         const error = await response.json()
         alert(`Failed to fetch campaigns: ${error.error}`)
@@ -162,6 +204,38 @@ export default function GoogleAdWordsPage() {
     } catch (error) {
       console.error('Delete configuration error:', error)
       alert('Failed to delete configuration')
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'bg-green-500'
+      case 'warning':
+        return 'bg-orange-500'
+      case 'error':
+        return 'bg-red-500'
+      default:
+        return 'bg-gray-500'
+    }
+  }
+
+  const getStatusIcon = (type: string, status: string) => {
+    if (status === 'error') return 'error'
+    if (status === 'warning') return 'warning'
+    
+    switch (type) {
+      case 'CONNECTION_TEST':
+        return 'check_circle'
+      case 'CAMPAIGN_FETCH':
+      case 'DATA_SYNC':
+        return 'sync'
+      case 'KEYWORD_UPDATE':
+        return 'edit'
+      case 'RATE_LIMIT_WARNING':
+        return 'warning'
+      default:
+        return 'check_circle'
     }
   }
 
@@ -314,7 +388,7 @@ export default function GoogleAdWordsPage() {
                       value={developerToken}
                       onChange={(e) => setDeveloperToken(e.target.value)}
                       className="form-input"
-                      placeholder="Enter your developer token"
+                      placeholder={config.hasDeveloperToken && !developerToken ? "xxxxxxxxxxxxxxxx (saved)" : "Enter your developer token"}
                       required
                     />
                     <p className="text-xs mt-1 opacity-70">Your Google Ads API developer token</p>
@@ -330,7 +404,7 @@ export default function GoogleAdWordsPage() {
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
                       className="form-input"
-                      placeholder="Your OAuth2 client ID"
+                      placeholder={config.clientId && !clientId ? `xxxxxxxx${config.clientId.slice(-4)} (saved)` : "Your OAuth2 client ID"}
                       required
                     />
                   </div>
@@ -345,7 +419,7 @@ export default function GoogleAdWordsPage() {
                       value={clientSecret}
                       onChange={(e) => setClientSecret(e.target.value)}
                       className="form-input"
-                      placeholder="Your OAuth2 client secret"
+                      placeholder={config.hasClientSecret && !clientSecret ? "xxxxxxxxxxxxxxxx (saved)" : "Your OAuth2 client secret"}
                       required
                     />
                   </div>
@@ -360,7 +434,7 @@ export default function GoogleAdWordsPage() {
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       className="form-input"
-                      placeholder="Optional API key for additional features"
+                      placeholder={config.hasApiKey && !apiKey ? "xxxxxxxxxxxxxxxx (saved)" : "Optional API key for additional features"}
                     />
                   </div>
                 </div>
@@ -391,48 +465,50 @@ export default function GoogleAdWordsPage() {
               <h3 className="form-section-title">
                 <span className="material-symbols-outlined">history</span>
                 Recent API Activity
+                <button 
+                  onClick={fetchRecentActivities}
+                  disabled={activitiesLoading}
+                  className="ml-auto text-xs opacity-60 hover:opacity-100 disabled:opacity-40"
+                  title="Refresh activities"
+                >
+                  <span className={`material-symbols-outlined text-sm ${activitiesLoading ? 'animate-spin' : ''}`}>
+                    refresh
+                  </span>
+                </button>
               </h3>
               <div className="timeline-events-container">
-                <div className="timeline-event-item">
-                  <div className="timeline-event-connector">
-                    <div className="timeline-event-dot bg-green-500">
-                      <span className="material-symbols-outlined timeline-event-icon">check_circle</span>
+                {activitiesLoading ? (
+                  <div className="text-center py-8 opacity-60">
+                    <span className="material-symbols-outlined animate-spin">sync</span>
+                    <p className="mt-2">Loading recent activity...</p>
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="text-center py-8 opacity-60">
+                    <span className="material-symbols-outlined">history_off</span>
+                    <p className="mt-2">No recent activity found</p>
+                    <p className="text-xs mt-1">Activity will appear here after using the API</p>
+                  </div>
+                ) : (
+                  activities.map((activity, index) => (
+                    <div key={activity.id} className="timeline-event-item">
+                      <div className="timeline-event-connector">
+                        <div className={`timeline-event-dot ${getStatusColor(activity.status)}`}>
+                          <span className="material-symbols-outlined timeline-event-icon">
+                            {getStatusIcon(activity.type, activity.status)}
+                          </span>
+                        </div>
+                        {index < activities.length - 1 && <div className="timeline-event-line"></div>}
+                      </div>
+                      <div className="timeline-event-content">
+                        <h4 className="timeline-event-title">{activity.title}</h4>
+                        <div className="timeline-event-date">{activity.timeAgo}</div>
+                        {activity.description && (
+                          <p className="timeline-event-description">{activity.description}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="timeline-event-line"></div>
-                  </div>
-                  <div className="timeline-event-content">
-                    <h4 className="timeline-event-title">Campaign data synced</h4>
-                    <div className="timeline-event-date">2 hours ago</div>
-                    <p className="timeline-event-description">Successfully synced 15 campaigns</p>
-                  </div>
-                </div>
-                
-                <div className="timeline-event-item">
-                  <div className="timeline-event-connector">
-                    <div className="timeline-event-dot bg-blue-500">
-                      <span className="material-symbols-outlined timeline-event-icon">sync</span>
-                    </div>
-                    <div className="timeline-event-line"></div>
-                  </div>
-                  <div className="timeline-event-content">
-                    <h4 className="timeline-event-title">Keywords updated</h4>
-                    <div className="timeline-event-date">5 hours ago</div>
-                    <p className="timeline-event-description">Updated 250 keyword bids</p>
-                  </div>
-                </div>
-                
-                <div className="timeline-event-item">
-                  <div className="timeline-event-connector">
-                    <div className="timeline-event-dot bg-orange-500">
-                      <span className="material-symbols-outlined timeline-event-icon">warning</span>
-                    </div>
-                  </div>
-                  <div className="timeline-event-content">
-                    <h4 className="timeline-event-title">Rate limit warning</h4>
-                    <div className="timeline-event-date">Yesterday</div>
-                    <p className="timeline-event-description">Approaching daily API limit (14,500/15,000)</p>
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </div>
 

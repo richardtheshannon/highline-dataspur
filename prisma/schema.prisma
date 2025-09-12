@@ -53,6 +53,7 @@ model User {
   
   projectsOwned   Project[]          @relation("ProjectOwner")
   apiConfigurations ApiConfiguration[] @relation("UserApiConfigs")
+  apiActivities   ApiActivity[]      @relation("UserApiActivities")
 }
 
 model Project {
@@ -104,6 +105,21 @@ enum ApiConfigStatus {
   ERROR
 }
 
+enum ApiActivityType {
+  CONNECTION_TEST
+  DATA_SYNC
+  CAMPAIGN_FETCH
+  KEYWORD_UPDATE
+  RATE_LIMIT_WARNING
+  ERROR
+}
+
+enum ApiActivityStatus {
+  SUCCESS
+  WARNING
+  ERROR
+}
+
 model ApiConfiguration {
   id            String          @id @default(cuid())
   userId        String
@@ -121,6 +137,23 @@ model ApiConfiguration {
   updatedAt     DateTime        @updatedAt
   
   user          User            @relation("UserApiConfigs", fields: [userId], references: [id], onDelete: Cascade)
+  activities    ApiActivity[]   @relation("ApiConfigActivities")
   
   @@unique([userId, provider])
+}
+
+model ApiActivity {
+  id            String            @id @default(cuid())
+  userId        String
+  apiConfigId   String
+  provider      ApiProvider
+  type          ApiActivityType
+  status        ApiActivityStatus
+  title         String
+  description   String?
+  metadata      Json?             // Additional data like sync counts, errors, etc.
+  createdAt     DateTime          @default(now())
+  
+  user          User              @relation("UserApiActivities", fields: [userId], references: [id], onDelete: Cascade)
+  apiConfig     ApiConfiguration  @relation("ApiConfigActivities", fields: [apiConfigId], references: [id], onDelete: Cascade)
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient, ApiProvider } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 import { decryptString } from '@/lib/encryption'
+import { logApiActivity, createApiActivity } from '@/lib/apiActivity'
 
 const prisma = new PrismaClient()
 
@@ -46,6 +47,15 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       }
     })
+
+    // Log the connection test activity
+    await logApiActivity(createApiActivity.connectionTest(
+      userId,
+      config.id,
+      ApiProvider.GOOGLE_ADWORDS,
+      testResult.success,
+      testResult.details
+    ))
     
     return NextResponse.json({
       success: testResult.success,
