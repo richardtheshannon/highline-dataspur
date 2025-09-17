@@ -132,7 +132,7 @@ export default function PlatformPerformanceChart() {
           as="h2"
         />
         <p className="chart-subtitle">
-          Monthly conversions across {metrics.totalPlatforms} connected platform{metrics.totalPlatforms !== 1 ? 's' : ''}
+          Monthly conversions across {metrics.insights.totalPlatforms} connected platform{metrics.insights.totalPlatforms !== 1 ? 's' : ''}
         </p>
       </div>
       
@@ -208,7 +208,7 @@ export default function PlatformPerformanceChart() {
           <div className="insight-card">
             <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Connected Platforms</h4>
             <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
-              {metrics.totalPlatforms} platform{metrics.totalPlatforms !== 1 ? 's' : ''} actively monitored
+              {metrics.insights.totalPlatforms} platform{metrics.insights.totalPlatforms !== 1 ? 's' : ''} actively monitored
             </p>
           </div>
           {metrics.insights.growthTrend && (
