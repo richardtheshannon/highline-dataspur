@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const currentYear = new Date().getFullYear()
     
     // Initialize chart data with months
-    const chartData = months.map((month) => ({ name: month }))
+    const chartData: Array<{ name: string; [key: string]: any }> = months.map((month) => ({ name: month }))
 
     // Process each connected API configuration
     for (const config of user.apiConfigurations) {
