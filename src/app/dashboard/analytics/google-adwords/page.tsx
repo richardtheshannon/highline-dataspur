@@ -716,8 +716,8 @@ export default function GoogleAdWordsAnalytics() {
                 <span className="material-symbols-outlined">campaign</span>
                 Top Campaigns
               </h3>
-              <button 
-                onClick={fetchAnalyticsData}
+              <button
+                onClick={() => fetchAnalyticsData(true)}
                 className="icon-btn"
                 title="Refresh"
               >
