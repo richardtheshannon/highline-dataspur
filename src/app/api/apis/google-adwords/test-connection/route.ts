@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const clientSecret = decryptString(config.clientSecret)
     const developerToken = decryptString(config.developerToken || '')
     const refreshToken = config.refreshToken ? decryptString(config.refreshToken) : undefined
-    const customerId = config.apiKey // Customer ID stored in apiKey field
+    const customerId = config.apiKey || undefined // Customer ID stored in apiKey field
     
     // Test real Google Ads API connection
     const googleAdsService = new GoogleAdsService({
