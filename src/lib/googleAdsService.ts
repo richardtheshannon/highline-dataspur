@@ -260,6 +260,12 @@ export class GoogleAdsService {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
 
+      // Check if we have campaign IDs
+      if (campaignIds.length === 0) {
+        console.log('No campaign IDs provided for daily metrics fetch');
+        return [];
+      }
+
       // Create campaign filter
       const campaignFilter = campaignIds.map(id => `campaign.id = '${id}'`).join(' OR ');
 
