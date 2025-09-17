@@ -94,6 +94,7 @@ model TimelineEvent {
 
 enum ApiProvider {
   GOOGLE_ADWORDS
+  GOOGLE_ANALYTICS
   FACEBOOK_ADS
   TWITTER_ADS
   LINKEDIN_ADS
@@ -110,8 +111,13 @@ enum ApiActivityType {
   DATA_SYNC
   CAMPAIGN_FETCH
   KEYWORD_UPDATE
+  REPORT_FETCH
+  GOAL_UPDATE
   RATE_LIMIT_WARNING
   ERROR
+  METRICS_SYNC
+  CAMPAIGN_SYNC
+  BACKGROUND_SYNC
 }
 
 enum ApiActivityStatus {
@@ -135,10 +141,11 @@ model ApiConfiguration {
   status        ApiConfigStatus @default(INACTIVE)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-  
-  user          User            @relation("UserApiConfigs", fields: [userId], references: [id], onDelete: Cascade)
-  activities    ApiActivity[]   @relation("ApiConfigActivities")
-  
+
+  user          User                @relation("UserApiConfigs", fields: [userId], references: [id], onDelete: Cascade)
+  activities    ApiActivity[]       @relation("ApiConfigActivities")
+  googleAdsCampaigns GoogleAdsCampaign[] @relation("GoogleAdsCampaigns")
+
   @@unique([userId, provider])
 }
 
@@ -153,7 +160,46 @@ model ApiActivity {
   description   String?
   metadata      Json?             // Additional data like sync counts, errors, etc.
   createdAt     DateTime          @default(now())
-  
+
   user          User              @relation("UserApiActivities", fields: [userId], references: [id], onDelete: Cascade)
   apiConfig     ApiConfiguration  @relation("ApiConfigActivities", fields: [apiConfigId], references: [id], onDelete: Cascade)
+}
+
+// Local storage for Google Ads campaigns and metrics
+model GoogleAdsCampaign {
+  id                String   @id @default(cuid())
+  apiConfigId       String
+  campaignId        String   // Google Ads campaign ID
+  name              String
+  status            String
+  budget            Float?
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastSyncAt        DateTime @default(now())
+
+  apiConfig         ApiConfiguration @relation("GoogleAdsCampaigns", fields: [apiConfigId], references: [id], onDelete: Cascade)
+  metrics           GoogleAdsMetrics[]
+
+  @@unique([apiConfigId, campaignId])
+}
+
+model GoogleAdsMetrics {
+  id              String   @id @default(cuid())
+  campaignId      String
+  date            DateTime @db.Date
+  impressions     Int      @default(0)
+  clicks          Int      @default(0)
+  conversions     Float    @default(0)
+  cost            Float    @default(0) // Cost in account currency
+  ctr             Float    @default(0) // Click-through rate
+  averageCpc      Float    @default(0) // Average cost per click
+  conversionRate  Float    @default(0) // Conversion rate percentage
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  campaign        GoogleAdsCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
 }

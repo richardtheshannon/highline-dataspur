@@ -37,6 +37,7 @@
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "formidable": "^3.5.4",
+    "google-ads-api": "^21.0.1",
     "jspdf": "^3.0.2",
     "next": "^14.2.22",
     "next-auth": "^4.24.5",

@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
-import { keyMetricsDoc, connectionStatusDoc } from '@/data/helpDocumentation'
+import { keyMetricsDoc, connectionStatusDoc, performanceTrendDoc } from '@/data/helpDocumentation'
 
 interface Campaign {
   id: string
@@ -49,7 +49,11 @@ export default function GoogleAdWordsAnalytics() {
   const [selectedMetric, setSelectedMetric] = useState('impressions')
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected')
   const [comparison, setComparison] = useState<ComparisonData>({})
-  
+  const [refreshing, setRefreshing] = useState(false)
+  const [dataSource, setDataSource] = useState<'cache' | 'live_api_fallback' | 'unknown'>('unknown')
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null)
+  const [cacheAge, setCacheAge] = useState<number>(0)
+
   const [totals, setTotals] = useState({
     impressions: 0,
     clicks: 0,
@@ -72,10 +76,13 @@ export default function GoogleAdWordsAnalytics() {
     try {
       const response = await fetch('/api/apis/google-adwords')
       const data = await response.json()
-      
-      if (data.config && data.config.status === 'ACTIVE') {
+
+      // Check both old and new response formats
+      const status = data.status || (data.config && data.config.status)
+
+      if (status && (status === 'ACTIVE' || status === 'active')) {
         setConnectionStatus('connected')
-      } else if (data.config && data.config.status === 'ERROR') {
+      } else if (status && (status === 'ERROR' || status === 'error')) {
         setConnectionStatus('error')
       } else {
         setConnectionStatus('disconnected')
@@ -86,24 +93,35 @@ export default function GoogleAdWordsAnalytics() {
     }
   }
 
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = async (forceRefresh = false) => {
     try {
       setLoading(true)
-      
-      // Fetch real metrics data from the API
-      const metricsResponse = await fetch(`/api/apis/google-adwords/metrics?timeRange=${timeRange}`)
-      
+      if (forceRefresh) {
+        setRefreshing(true)
+      }
+
+      // Fetch metrics data from the API (now cache-first with smart refresh)
+      const url = `/api/apis/google-adwords/metrics?timeRange=${timeRange}${forceRefresh ? '&refresh=true' : ''}`
+      const metricsResponse = await fetch(url)
+
       if (!metricsResponse.ok) {
         throw new Error('Failed to fetch metrics')
       }
-      
+
       const metricsData = await metricsResponse.json()
-      
+
       // Update connection status based on API response
       if (metricsData.config?.status === 'ACTIVE') {
         setConnectionStatus('connected')
       }
-      
+
+      // Extract metadata about data source and freshness
+      if (metricsData.meta) {
+        setDataSource(metricsData.meta.dataSource || 'unknown')
+        setLastSyncAt(metricsData.meta.lastSyncAt || metricsData.config?.lastSync || null)
+        setCacheAge(metricsData.meta.cacheAge || 0)
+      }
+
       // Set the real data
       setTotals(metricsData.metrics.totals)
       setCampaigns(metricsData.metrics.campaigns)
@@ -113,7 +131,12 @@ export default function GoogleAdWordsAnalytics() {
       console.error('Error fetching analytics data:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleRefresh = () => {
+    fetchAnalyticsData(true)
   }
 
   const formatNumber = (num: number): string => {
@@ -138,11 +161,43 @@ export default function GoogleAdWordsAnalytics() {
     return value.toFixed(2) + '%'
   }
 
-  // Custom tooltip component for Recharts
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const formatTimeAgo = (timestamp: string | null): string => {
+    if (!timestamp) return 'Unknown'
+
+    const now = new Date()
+    const then = new Date(timestamp)
+    const diffMs = now.getTime() - then.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+
+    return then.toLocaleDateString()
+  }
+
+  const getDataFreshnessIndicator = () => {
+    const ageHours = cacheAge / (1000 * 60 * 60)
+
+    if (dataSource === 'cache' && ageHours < 1) {
+      return { status: 'fresh', color: '#10b981', text: 'Fresh data' }
+    } else if (dataSource === 'cache' && ageHours < 3) {
+      return { status: 'good', color: '#f59e0b', text: 'Recent data' }
+    } else if (dataSource === 'cache') {
+      return { status: 'stale', color: '#ef4444', text: 'Stale data' }
+    } else if (dataSource === 'live_api_fallback') {
+      return { status: 'live', color: '#3b82f6', text: 'Live data' }
+    }
+
+    return { status: 'unknown', color: '#6b7280', text: 'Unknown' }
+  }
+
+  // Custom tooltip component for Cost & Conversions AreaChart
+  const CostConversionsTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const value = payload[0].value
-      const formattedValue = selectedMetric === 'cost' ? formatCurrency(value) : formatNumber(value)
       const date = new Date(label).toLocaleDateString('en-US', { 
         month: 'short', 
         day: 'numeric',
@@ -158,9 +213,90 @@ export default function GoogleAdWordsAnalytics() {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
         }}>
           <p style={{ color: 'var(--text-primary)', margin: 0, fontWeight: 500 }}>{date}</p>
-          <p style={{ color: 'var(--accent)', margin: 0, marginTop: '0.25rem' }}>
-            {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}: {formattedValue}
+          {payload.map((entry: any, index: number) => (
+            <p key={index} style={{ 
+              color: entry.color, 
+              margin: 0, 
+              marginTop: '0.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{ 
+                width: '12px', 
+                height: '12px', 
+                background: entry.color, 
+                borderRadius: '2px' 
+              }}></span>
+              {entry.dataKey === 'cost' ? 
+                `Cost: ${formatCurrency(entry.value)}` : 
+                `Conversions: ${formatNumber(entry.value)}`
+              }
+            </p>
+          ))}
+        </div>
+      )
+    }
+    return null
+  }
+
+  // Custom tooltip component for Overall Campaign Performance AreaChart
+  const OverallCampaignTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const date = new Date(label).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+      })
+      
+      return (
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '6px',
+          padding: '0.75rem',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+        }}>
+          <p style={{ color: 'var(--text-primary)', margin: 0, fontWeight: 500 }}>{date}</p>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, marginTop: '0.25rem', fontSize: '0.875rem' }}>
+            {enabledCampaigns.length} Active Campaigns
           </p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} style={{ 
+              color: entry.color, 
+              margin: 0, 
+              marginTop: '0.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{ 
+                width: '12px', 
+                height: '12px', 
+                background: entry.color, 
+                borderRadius: '2px' 
+              }}></span>
+              {entry.dataKey === 'cost' ? 
+                `Cost: ${formatCurrency(entry.value)}` : 
+                `Conversions: ${formatNumber(entry.value)}`
+              }
+            </p>
+          ))}
+          {payload.length >= 2 && (
+            <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
+              <p style={{ 
+                color: 'var(--text-secondary)', 
+                margin: 0, 
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }}>
+                CPA: {payload.find((p: any) => p.dataKey === 'cost')?.value && payload.find((p: any) => p.dataKey === 'conversions')?.value ? 
+                  formatCurrency(payload.find((p: any) => p.dataKey === 'cost').value / payload.find((p: any) => p.dataKey === 'conversions').value) :
+                  'N/A'
+                }
+              </p>
+            </div>
+          )}
         </div>
       )
     }
@@ -173,21 +309,20 @@ export default function GoogleAdWordsAnalytics() {
     displayDate: new Date(data.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }))
 
-  // Calculate overall campaign performance data for enabled campaigns
+  // Filter only enabled campaigns for display
   const enabledCampaigns = campaigns.filter(campaign => campaign.status === 'enabled')
-  const overallPerformanceData = chartData.map(dayData => {
-    const enabledPerformance = {
-      date: dayData.date,
-      displayDate: dayData.displayDate,
-      impressions: Math.round(dayData.impressions * 0.85), // Assume 85% from enabled campaigns
-      clicks: Math.round(dayData.clicks * 0.85),
-      conversions: Math.round(dayData.conversions * 0.85),
-      cost: Math.round(dayData.cost * 0.85),
-      ctr: (dayData.clicks / dayData.impressions * 100) || 0,
-      conversionRate: (dayData.conversions / dayData.clicks * 100) || 0
-    }
-    return enabledPerformance
-  })
+
+  // Use actual performance data from enabled campaigns
+  const overallPerformanceData = chartData.map(dayData => ({
+    date: dayData.date,
+    displayDate: dayData.displayDate,
+    impressions: dayData.impressions,
+    clicks: dayData.clicks,
+    conversions: dayData.conversions,
+    cost: dayData.cost,
+    ctr: (dayData as any).ctr || (dayData.clicks && dayData.impressions ? (dayData.clicks / dayData.impressions * 100) : 0),
+    conversionRate: (dayData as any).conversionRate || (dayData.conversions && dayData.clicks ? (dayData.conversions / dayData.clicks * 100) : 0)
+  }))
 
   if (loading) {
     return (
@@ -255,6 +390,69 @@ export default function GoogleAdWordsAnalytics() {
                   </Link>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Data Freshness & Refresh Controls */}
+          <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
+                  schedule
+                </span>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
+                  Data Freshness
+                </h3>
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="form-btn form-btn-sm form-btn-primary"
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  opacity: refreshing ? 0.6 : 1
+                }}
+              >
+                <span className="material-symbols-outlined" style={{
+                  fontSize: '1rem',
+                  animation: refreshing ? 'spin 1s linear infinite' : 'none'
+                }}>
+                  refresh
+                </span>
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+            <div className="card-content" style={{ padding: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: getDataFreshnessIndicator().color
+                    }}
+                  ></span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                    {getDataFreshnessIndicator().text}
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {dataSource === 'cache' ? 'Cached' : dataSource === 'live_api_fallback' ? 'Live API' : 'Unknown'}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                Last updated: {formatTimeAgo(lastSyncAt)}
+              </div>
+              {dataSource === 'cache' && cacheAge > 0 && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  Cache age: {Math.round(cacheAge / (1000 * 60))} minutes
+                </div>
+              )}
             </div>
           </div>
 
@@ -340,26 +538,31 @@ export default function GoogleAdWordsAnalytics() {
           {/* Performance Trend Chart */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
-              <h3>
-                <span className="material-symbols-outlined">trending_up</span>
-                Performance Trend
-              </h3>
-              <select 
-                className="form-select"
-                value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value)}
-                style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem' }}
-              >
-                <option value="impressions">Impressions</option>
-                <option value="clicks">Clicks</option>
-                <option value="conversions">Conversions</option>
-                <option value="cost">Cost</option>
-              </select>
+              <DocumentedTitle 
+                className=""
+                icon="trending_up"
+                title="Performance Trend"
+                documentation={performanceTrendDoc}
+                as="h3"
+              />
+              <div className="form-select-wrapper" style={{ fontSize: '0.875rem' }}>
+                Cost & Conversions
+              </div>
             </div>
             <div className="card-content">
               <div className="chart-container" style={{ height: '300px', padding: '1rem' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: chartData.length > 20 ? 60 : 25 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: chartData.length > 20 ? 60 : 25 }}>
+                    <defs>
+                      <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#FF6B35" stopOpacity={0.2}/>
+                      </linearGradient>
+                      <linearGradient id="conversionsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.2}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                     <XAxis 
                       dataKey="displayDate" 
@@ -375,16 +578,29 @@ export default function GoogleAdWordsAnalytics() {
                       stroke="var(--text-secondary)"
                       fontSize={12}
                       tick={{ fill: 'var(--text-secondary)' }}
-                      tickFormatter={(value) => selectedMetric === 'cost' ? formatCurrency(value) : formatNumber(value)}
+                      tickFormatter={(value) => formatNumber(value)}
                     />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar 
-                      dataKey={selectedMetric}
-                      fill="var(--accent)"
-                      radius={[2, 2, 0, 0]}
-                      animationDuration={300}
+                    <Tooltip content={<CostConversionsTooltip />} />
+                    <Legend />
+                    <Area 
+                      type="monotone"
+                      dataKey="cost"
+                      stackId="1"
+                      stroke="#FF6B35"
+                      fill="url(#costGradient)"
+                      strokeWidth={2}
+                      name="Cost ($)"
                     />
-                  </BarChart>
+                    <Area 
+                      type="monotone"
+                      dataKey="conversions"
+                      stackId="1"
+                      stroke="#10B981"
+                      fill="url(#conversionsGradient)"
+                      strokeWidth={2}
+                      name="Conversions"
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -404,7 +620,17 @@ export default function GoogleAdWordsAnalytics() {
             <div className="card-content">
               <div className="chart-container" style={{ height: '350px', padding: '1rem' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={overallPerformanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <AreaChart data={overallPerformanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="overallCostGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.2}/>
+                      </linearGradient>
+                      <linearGradient id="overallConversionsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.2}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.3} />
                     <XAxis 
                       dataKey="displayDate" 
@@ -414,36 +640,12 @@ export default function GoogleAdWordsAnalytics() {
                       tick={{ fill: 'var(--text-secondary)' }}
                     />
                     <YAxis 
-                      yAxisId="left"
                       stroke="var(--text-secondary)"
                       fontSize={12}
                       tick={{ fill: 'var(--text-secondary)' }}
                       tickFormatter={(value) => formatNumber(value)}
                     />
-                    <YAxis 
-                      yAxisId="right"
-                      orientation="right"
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      tick={{ fill: 'var(--text-secondary)' }}
-                      tickFormatter={(value) => formatCurrency(value)}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: 'var(--card-bg)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '8px',
-                        color: 'var(--text-primary)',
-                        fontSize: '12px'
-                      }}
-                      labelStyle={{ color: 'var(--text-primary)' }}
-                      formatter={(value, name) => {
-                        if (name === 'cost') return [formatCurrency(Number(value)), 'Cost']
-                        if (name === 'ctr' || name === 'conversionRate') return [`${Number(value).toFixed(2)}%`, name === 'ctr' ? 'CTR' : 'Conversion Rate']
-                        return [formatNumber(Number(value)), String(name).charAt(0).toUpperCase() + String(name).slice(1)]
-                      }}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
+                    <Tooltip content={<OverallCampaignTooltip />} />
                     <Legend 
                       wrapperStyle={{ 
                         paddingTop: '10px',
@@ -451,47 +653,25 @@ export default function GoogleAdWordsAnalytics() {
                         color: 'var(--text-secondary)'
                       }}
                     />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="impressions" 
-                      stroke="#3B82F6" 
+                    <Area 
+                      type="monotone"
+                      dataKey="cost"
+                      stackId="1"
+                      stroke="#EF4444"
+                      fill="url(#overallCostGradient)"
                       strokeWidth={2}
-                      dot={{ fill: '#3B82F6', strokeWidth: 1, r: 3 }}
-                      activeDot={{ r: 5, stroke: '#3B82F6', strokeWidth: 2 }}
-                      name="Impressions"
+                      name="Cost ($)"
                     />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="clicks" 
-                      stroke="#10B981" 
+                    <Area 
+                      type="monotone"
+                      dataKey="conversions"
+                      stackId="1"
+                      stroke="#F59E0B"
+                      fill="url(#overallConversionsGradient)"
                       strokeWidth={2}
-                      dot={{ fill: '#10B981', strokeWidth: 1, r: 3 }}
-                      activeDot={{ r: 5, stroke: '#10B981', strokeWidth: 2 }}
-                      name="Clicks"
-                    />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="conversions" 
-                      stroke="#F59E0B" 
-                      strokeWidth={2}
-                      dot={{ fill: '#F59E0B', strokeWidth: 1, r: 3 }}
-                      activeDot={{ r: 5, stroke: '#F59E0B', strokeWidth: 2 }}
                       name="Conversions"
                     />
-                    <Line 
-                      yAxisId="right"
-                      type="monotone" 
-                      dataKey="cost" 
-                      stroke="#EF4444" 
-                      strokeWidth={2}
-                      dot={{ fill: '#EF4444', strokeWidth: 1, r: 3 }}
-                      activeDot={{ r: 5, stroke: '#EF4444', strokeWidth: 2 }}
-                      name="Cost"
-                    />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
               <div className="chart-insights" style={{ 
@@ -551,7 +731,7 @@ export default function GoogleAdWordsAnalytics() {
                 gap: '1rem',
                 marginBottom: '1rem'
               }}>
-                {campaigns.slice(0, 6).map(campaign => (
+                {enabledCampaigns.slice(0, 6).map(campaign => (
                   <div key={campaign.id} className="campaign-card">
                     <div className="campaign-card-header">
                       <div className="campaign-card-name">{campaign.name}</div>
@@ -627,7 +807,7 @@ export default function GoogleAdWordsAnalytics() {
             <div className="card-header">
               <h3>
                 <span className="material-symbols-outlined">table_chart</span>
-                Campaign Performance
+                Campaign Performance (Enabled Only)
               </h3>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button className="icon-btn" title="Download">
@@ -653,7 +833,13 @@ export default function GoogleAdWordsAnalytics() {
                     </tr>
                   </thead>
                   <tbody>
-                    {campaigns.map(campaign => (
+                    {enabledCampaigns.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                          No enabled campaigns found. Please check your Google AdWords account.
+                        </td>
+                      </tr>
+                    ) : enabledCampaigns.map(campaign => (
                       <tr key={campaign.id}>
                         <td className="campaign-name-cell">{campaign.name}</td>
                         <td>

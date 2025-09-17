@@ -8,27 +8,27 @@ interface ApiConfig {
   configured: boolean
   status: string
   name?: string
-  clientId?: string
-  hasClientSecret?: boolean
-  hasDeveloperToken?: boolean
-  hasApiKey?: boolean
+  measurementId?: string
+  hasApiSecret?: boolean
+  propertyId?: string
+  viewId?: string
   tokenExpiry?: string
   createdAt?: string
   updatedAt?: string
 }
 
-interface Campaign {
+interface AnalyticsData {
   id: string
   name: string
-  status: string
-  budget: number
-  spend: number
-  impressions: number
-  clicks: number
-  conversions: number
-  ctr: number
-  cpc: number
+  type: string
+  sessions: number
+  users: number
+  pageviews: number
+  bounceRate: number
+  avgSessionDuration: number
+  goalCompletions: number
   conversionRate: number
+  revenue: number
   startDate: string
   endDate: string
 }
@@ -44,19 +44,17 @@ interface ApiActivity {
   timeAgo: string
 }
 
-export default function GoogleAdWordsPage() {
+export default function GoogleAnalyticsPage() {
   const router = useRouter()
-  const [apiKey, setApiKey] = useState('')
-  const [clientId, setClientId] = useState('')
-  const [clientSecret, setClientSecret] = useState('')
-  const [developerToken, setDeveloperToken] = useState('')
-  const [refreshToken, setRefreshToken] = useState('')
-  const [customerId, setCustomerId] = useState('')
+  const [measurementId, setMeasurementId] = useState('')
+  const [apiSecret, setApiSecret] = useState('')
+  const [propertyId, setPropertyId] = useState('')
+  const [viewId, setViewId] = useState('')
   const [config, setConfig] = useState<ApiConfig>({ configured: false, status: 'not_configured' })
   const [loading, setLoading] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [showCampaigns, setShowCampaigns] = useState(false)
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([])
+  const [showAnalytics, setShowAnalytics] = useState(false)
   const [activities, setActivities] = useState<ApiActivity[]>([])
   const [activitiesLoading, setActivitiesLoading] = useState(false)
 
@@ -68,7 +66,7 @@ export default function GoogleAdWordsPage() {
   const fetchRecentActivities = async () => {
     setActivitiesLoading(true)
     try {
-      const response = await fetch('/api/apis/google-adwords/activities?limit=5')
+      const response = await fetch('/api/apis/google-analytics/activities?limit=5')
       if (response.ok) {
         const data = await response.json()
         setActivities(data.activities || [])
@@ -82,16 +80,14 @@ export default function GoogleAdWordsPage() {
 
   const fetchConfiguration = async () => {
     try {
-      const response = await fetch('/api/apis/google-adwords')
+      const response = await fetch('/api/apis/google-analytics')
       if (response.ok) {
         const data = await response.json()
-        console.log('🔍 Fetched configuration:', data) // Debug log
+        console.log('🔍 Fetched configuration:', data)
         setConfig(data)
       } else {
         console.error('❌ API response not ok:', response.status, response.statusText)
-        // If the response is not ok, check if it's a 404 (no config) vs other errors
         if (response.status === 404 || response.status === 400) {
-          // No configuration found - keep default state
           console.log('ℹ️ No configuration found, keeping default state')
         } else {
           console.error('❌ Unexpected error response:', await response.text())
@@ -107,30 +103,26 @@ export default function GoogleAdWordsPage() {
     setLoading(true)
     
     try {
-      const response = await fetch('/api/apis/google-adwords', {
+      const response = await fetch('/api/apis/google-analytics', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          clientId,
-          clientSecret,
-          developerToken,
-          refreshToken: refreshToken || undefined,
-          customerId: customerId || undefined,
-          apiKey: apiKey || undefined
+          measurementId,
+          apiSecret,
+          propertyId: propertyId || undefined,
+          viewId: viewId || undefined
         })
       })
 
       if (response.ok) {
         const data = await response.json()
         setConfig(data)
-        setClientId('')
-        setClientSecret('')
-        setDeveloperToken('')
-        setRefreshToken('')
-        setCustomerId('')
-        setApiKey('')
+        setMeasurementId('')
+        setApiSecret('')
+        setPropertyId('')
+        setViewId('')
         alert('Configuration saved successfully!')
       } else {
         const error = await response.json()
@@ -147,18 +139,18 @@ export default function GoogleAdWordsPage() {
   const handleTestConnection = async () => {
     setTesting(true)
     try {
-      const response = await fetch('/api/apis/google-adwords/test-connection', {
+      const response = await fetch('/api/apis/google-analytics/test-connection', {
         method: 'POST'
       })
       
       const result = await response.json()
       if (result.success) {
         alert(`Connection successful! ${result.details}`)
-        await fetchConfiguration() // Refresh config to get updated status
-        await fetchRecentActivities() // Refresh activities to show the test
+        await fetchConfiguration()
+        await fetchRecentActivities()
       } else {
         alert(`Connection failed: ${result.details}`)
-        await fetchRecentActivities() // Refresh activities to show the failed test
+        await fetchRecentActivities()
       }
     } catch (error) {
       console.error('Test connection error:', error)
@@ -168,22 +160,22 @@ export default function GoogleAdWordsPage() {
     }
   }
 
-  const handleFetchCampaigns = async () => {
+  const handleFetchAnalytics = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/apis/google-adwords/campaigns')
+      const response = await fetch('/api/apis/google-analytics/reports')
       if (response.ok) {
         const data = await response.json()
-        setCampaigns(data.campaigns)
-        setShowCampaigns(true)
-        await fetchRecentActivities() // Refresh activities to show the fetch
+        setAnalyticsData(data.reports)
+        setShowAnalytics(true)
+        await fetchRecentActivities()
       } else {
         const error = await response.json()
-        alert(`Failed to fetch campaigns: ${error.error}`)
+        alert(`Failed to fetch analytics: ${error.error}`)
       }
     } catch (error) {
-      console.error('Fetch campaigns error:', error)
-      alert('Failed to fetch campaigns')
+      console.error('Fetch analytics error:', error)
+      alert('Failed to fetch analytics')
     } finally {
       setLoading(false)
     }
@@ -193,20 +185,18 @@ export default function GoogleAdWordsPage() {
     if (!confirm('Are you sure you want to delete the API configuration?')) return
     
     try {
-      const response = await fetch('/api/apis/google-adwords', {
+      const response = await fetch('/api/apis/google-analytics', {
         method: 'DELETE'
       })
       
       if (response.ok) {
         setConfig({ configured: false, status: 'not_configured' })
-        setClientId('')
-        setClientSecret('')
-        setDeveloperToken('')
-        setRefreshToken('')
-        setCustomerId('')
-        setApiKey('')
-        setCampaigns([])
-        setShowCampaigns(false)
+        setMeasurementId('')
+        setApiSecret('')
+        setPropertyId('')
+        setViewId('')
+        setAnalyticsData([])
+        setShowAnalytics(false)
         alert('Configuration deleted successfully')
       }
     } catch (error) {
@@ -235,11 +225,11 @@ export default function GoogleAdWordsPage() {
     switch (type) {
       case 'CONNECTION_TEST':
         return 'check_circle'
-      case 'CAMPAIGN_FETCH':
+      case 'REPORT_FETCH':
       case 'DATA_SYNC':
         return 'sync'
-      case 'KEYWORD_UPDATE':
-        return 'edit'
+      case 'GOAL_UPDATE':
+        return 'flag'
       case 'RATE_LIMIT_WARNING':
         return 'warning'
       default:
@@ -260,8 +250,8 @@ export default function GoogleAdWordsPage() {
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div>
-              <h1 className="create-project-title">Google AdWords API</h1>
-              <p className="create-project-subtitle">Configure and manage your Google AdWords integration</p>
+              <h1 className="create-project-title">Google Analytics API</h1>
+              <p className="create-project-subtitle">Configure and manage your Google Analytics integration</p>
             </div>
           </div>
         </div>
@@ -316,16 +306,16 @@ export default function GoogleAdWordsPage() {
               <div className="detail-grid">
                 <div className="detail-item">
                   <h4 className="form-label">API Version</h4>
-                  <p className="detail-value">v13.0</p>
+                  <p className="detail-value">GA4 Data API</p>
                 </div>
                 <div className="detail-item">
                   <h4 className="form-label">Rate Limit</h4>
-                  <p className="detail-value">15,000 requests/day</p>
+                  <p className="detail-value">200,000 tokens/day</p>
                 </div>
                 <div className="detail-item">
                   <h4 className="form-label">Documentation</h4>
                   <a 
-                    href="https://developers.google.com/google-ads/api/docs/start"
+                    href="https://developers.google.com/analytics/devguides/reporting/data/v1"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="detail-link"
@@ -357,20 +347,20 @@ export default function GoogleAdWordsPage() {
                   {testing ? 'Testing...' : 'Test Connection'}
                 </button>
                 <button 
-                  onClick={handleFetchCampaigns}
+                  onClick={handleFetchAnalytics}
                   disabled={config.status !== 'active' || loading}
                   className="form-btn form-btn-secondary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined">download</span>
-                  {loading ? 'Loading...' : 'Fetch Campaigns'}
+                  {loading ? 'Loading...' : 'Fetch Reports'}
                 </button>
                 <button 
-                  onClick={() => setShowCampaigns(!showCampaigns)}
-                  disabled={campaigns.length === 0}
+                  onClick={() => setShowAnalytics(!showAnalytics)}
+                  disabled={analyticsData.length === 0}
                   className="form-btn form-btn-secondary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined">analytics</span>
-                  {showCampaigns ? 'Hide' : 'View'} Analytics
+                  {showAnalytics ? 'Hide' : 'View'} Analytics
                 </button>
               </div>
             </div>
@@ -386,96 +376,66 @@ export default function GoogleAdWordsPage() {
               
               <form onSubmit={handleSaveConfiguration} className="space-y-6">
                 <div className="form-grid">
-                  <div className="form-field form-field-full">
-                    <label className="form-label" htmlFor="developerToken">
-                      Developer Token *
-                    </label>
-                    <input
-                      type="password"
-                      id="developerToken"
-                      value={developerToken}
-                      onChange={(e) => setDeveloperToken(e.target.value)}
-                      className="form-input"
-                      placeholder={config.hasDeveloperToken && !developerToken ? "xxxxxxxxxxxxxxxx (saved)" : "Enter your developer token"}
-                      required
-                    />
-                    <p className="text-xs mt-1 opacity-70">Your Google Ads API developer token</p>
-                  </div>
-
                   <div className="form-field">
-                    <label className="form-label" htmlFor="clientId">
-                      Client ID *
+                    <label className="form-label" htmlFor="measurementId">
+                      Measurement ID *
                     </label>
                     <input
                       type="text"
-                      id="clientId"
-                      value={clientId}
-                      onChange={(e) => setClientId(e.target.value)}
+                      id="measurementId"
+                      value={measurementId}
+                      onChange={(e) => setMeasurementId(e.target.value)}
                       className="form-input"
-                      placeholder={config.clientId && !clientId ? `xxxxxxxx${config.clientId.slice(-4)} (saved)` : "Your OAuth2 client ID"}
+                      placeholder={config.measurementId && !measurementId ? `${config.measurementId.slice(0, 3)}xxxxx${config.measurementId.slice(-2)} (saved)` : "G-XXXXXXXXXX"}
                       required
                     />
+                    <p className="text-xs mt-1 opacity-70">Your GA4 measurement ID</p>
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label" htmlFor="clientSecret">
-                      Client Secret *
+                    <label className="form-label" htmlFor="apiSecret">
+                      API Secret *
                     </label>
                     <input
                       type="password"
-                      id="clientSecret"
-                      value={clientSecret}
-                      onChange={(e) => setClientSecret(e.target.value)}
+                      id="apiSecret"
+                      value={apiSecret}
+                      onChange={(e) => setApiSecret(e.target.value)}
                       className="form-input"
-                      placeholder={config.hasClientSecret && !clientSecret ? "xxxxxxxxxxxxxxxx (saved)" : "Your OAuth2 client secret"}
+                      placeholder={config.hasApiSecret && !apiSecret ? "xxxxxxxxxxxxxxxx (saved)" : "Your API secret"}
                       required
                     />
+                    <p className="text-xs mt-1 opacity-70">GA4 Measurement Protocol API secret</p>
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label" htmlFor="refreshToken">
-                      Refresh Token *
+                    <label className="form-label" htmlFor="propertyId">
+                      Property ID (Optional)
                     </label>
                     <input
-                      type="password"
-                      id="refreshToken"
-                      value={refreshToken}
-                      onChange={(e) => setRefreshToken(e.target.value)}
+                      type="text"
+                      id="propertyId"
+                      value={propertyId}
+                      onChange={(e) => setPropertyId(e.target.value)}
                       className="form-input"
-                      placeholder="Your OAuth2 refresh token"
-                      required
+                      placeholder={config.propertyId && !propertyId ? `${config.propertyId} (saved)` : "123456789"}
                     />
-                    <p className="text-xs mt-1 opacity-70">Required for API authentication</p>
+                    <p className="text-xs mt-1 opacity-70">GA4 property ID for advanced features</p>
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label" htmlFor="customerId">
-                      Customer ID *
+                    <label className="form-label" htmlFor="viewId">
+                      Data Stream ID (Optional)
                     </label>
                     <input
                       type="text"
-                      id="customerId"
-                      value={customerId}
-                      onChange={(e) => setCustomerId(e.target.value)}
+                      id="viewId"
+                      value={viewId}
+                      onChange={(e) => setViewId(e.target.value)}
                       className="form-input"
-                      placeholder="123-456-7890"
-                      required
+                      placeholder={config.viewId && !viewId ? `${config.viewId} (saved)` : "1234567890"}
                     />
-                    <p className="text-xs mt-1 opacity-70">Your Google Ads customer ID</p>
-                  </div>
-
-                  <div className="form-field form-field-full">
-                    <label className="form-label" htmlFor="apiKey">
-                      Additional Notes
-                    </label>
-                    <input
-                      type="text"
-                      id="apiKey"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      className="form-input"
-                      placeholder="Optional notes or additional configuration"
-                    />
+                    <p className="text-xs mt-1 opacity-70">Data stream ID for specific tracking</p>
                   </div>
                 </div>
 
@@ -552,63 +512,63 @@ export default function GoogleAdWordsPage() {
               </div>
             </div>
 
-            {/* Campaigns Analytics */}
-            {showCampaigns && campaigns.length > 0 && (
+            {/* Analytics Reports */}
+            {showAnalytics && analyticsData.length > 0 && (
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <span className="material-symbols-outlined">campaign</span>
-                  Campaign Analytics
+                  <span className="material-symbols-outlined">insights</span>
+                  Analytics Reports
                 </h3>
                 <div className="space-y-4">
-                  {campaigns.map((campaign) => (
-                    <div key={campaign.id} className="border rounded-lg p-4 space-y-3">
+                  {analyticsData.map((report) => (
+                    <div key={report.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-lg">{campaign.name}</h4>
+                        <h4 className="font-semibold text-lg">{report.name}</h4>
                         <span className={`status-badge ${
-                          campaign.status === 'ENABLED' ? 'status-active' :
-                          campaign.status === 'PAUSED' ? 'status-inactive' : 'status-error'
+                          report.type === 'REALTIME' ? 'status-active' :
+                          report.type === 'STANDARD' ? 'status-inactive' : 'status-error'
                         }`}>
-                          {campaign.status}
+                          {report.type}
                         </span>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="detail-item">
-                          <h5 className="form-label">Budget</h5>
-                          <p className="detail-value">${campaign.budget.toLocaleString()}</p>
+                          <h5 className="form-label">Sessions</h5>
+                          <p className="detail-value">{report.sessions.toLocaleString()}</p>
                         </div>
                         <div className="detail-item">
-                          <h5 className="form-label">Spend</h5>
-                          <p className="detail-value">${campaign.spend.toLocaleString()}</p>
+                          <h5 className="form-label">Users</h5>
+                          <p className="detail-value">{report.users.toLocaleString()}</p>
                         </div>
                         <div className="detail-item">
-                          <h5 className="form-label">Impressions</h5>
-                          <p className="detail-value">{campaign.impressions.toLocaleString()}</p>
+                          <h5 className="form-label">Pageviews</h5>
+                          <p className="detail-value">{report.pageviews.toLocaleString()}</p>
                         </div>
                         <div className="detail-item">
-                          <h5 className="form-label">Clicks</h5>
-                          <p className="detail-value">{campaign.clicks.toLocaleString()}</p>
+                          <h5 className="form-label">Bounce Rate</h5>
+                          <p className="detail-value">{report.bounceRate.toFixed(2)}%</p>
                         </div>
                         <div className="detail-item">
-                          <h5 className="form-label">CTR</h5>
-                          <p className="detail-value">{campaign.ctr.toFixed(2)}%</p>
+                          <h5 className="form-label">Avg Session</h5>
+                          <p className="detail-value">{Math.floor(report.avgSessionDuration / 60)}m {report.avgSessionDuration % 60}s</p>
                         </div>
                         <div className="detail-item">
-                          <h5 className="form-label">CPC</h5>
-                          <p className="detail-value">${campaign.cpc.toFixed(2)}</p>
-                        </div>
-                        <div className="detail-item">
-                          <h5 className="form-label">Conversions</h5>
-                          <p className="detail-value">{campaign.conversions}</p>
+                          <h5 className="form-label">Goals</h5>
+                          <p className="detail-value">{report.goalCompletions}</p>
                         </div>
                         <div className="detail-item">
                           <h5 className="form-label">Conv. Rate</h5>
-                          <p className="detail-value">{campaign.conversionRate.toFixed(2)}%</p>
+                          <p className="detail-value">{report.conversionRate.toFixed(2)}%</p>
+                        </div>
+                        <div className="detail-item">
+                          <h5 className="form-label">Revenue</h5>
+                          <p className="detail-value">${report.revenue.toLocaleString()}</p>
                         </div>
                       </div>
                       
                       <div className="text-sm opacity-70">
-                        Period: {new Date(campaign.startDate).toLocaleDateString()} - {new Date(campaign.endDate).toLocaleDateString()}
+                        Period: {new Date(report.startDate).toLocaleDateString()} - {new Date(report.endDate).toLocaleDateString()}
                       </div>
                     </div>
                   ))}

@@ -151,6 +151,17 @@ export const createApiActivity = {
     metadata: campaignCount ? { campaignCount } : undefined
   }),
 
+  metricsSync: (userId: string, apiConfigId: string, provider: ApiProvider, success: boolean, dataCount?: number, details?: string) => ({
+    userId,
+    apiConfigId,
+    provider,
+    type: ApiActivityType.DATA_SYNC,
+    status: success ? ApiActivityStatus.SUCCESS : ApiActivityStatus.ERROR,
+    title: success ? 'Metrics data synced' : 'Metrics sync failed',
+    description: details || (success ? `Successfully synced metrics for ${dataCount || 0} items` : 'Failed to sync metrics'),
+    metadata: dataCount ? { dataCount } : undefined
+  }),
+
   keywordUpdate: (userId: string, apiConfigId: string, provider: ApiProvider, success: boolean, keywordCount?: number, details?: string) => ({
     userId,
     apiConfigId,
@@ -181,5 +192,40 @@ export const createApiActivity = {
     status: ApiActivityStatus.ERROR,
     title,
     description: details
+  }),
+
+  // New activity types for background sync
+  campaignSync: (userId: string, apiConfigId: string, provider: ApiProvider, success: boolean, campaignCount?: number, details?: string) => ({
+    userId,
+    apiConfigId,
+    provider,
+    type: ApiActivityType.CAMPAIGN_SYNC,
+    status: success ? ApiActivityStatus.SUCCESS : ApiActivityStatus.ERROR,
+    title: success ? 'Campaign sync completed' : 'Campaign sync failed',
+    description: success ? `Successfully synced ${campaignCount || 0} campaigns` : details,
+    metadata: campaignCount ? { campaignCount } : undefined
+  }),
+
+  backgroundSync: (userId: string, apiConfigId: string, provider: ApiProvider, success: boolean, metrics?: { campaigns: number; metricsRecords: number }, details?: string) => ({
+    userId,
+    apiConfigId,
+    provider,
+    type: ApiActivityType.BACKGROUND_SYNC,
+    status: success ? ApiActivityStatus.SUCCESS : ApiActivityStatus.ERROR,
+    title: success ? 'Background sync completed' : 'Background sync failed',
+    description: details || (success ? `Synced ${metrics?.campaigns || 0} campaigns and ${metrics?.metricsRecords || 0} metrics records` : 'Background sync failed'),
+    metadata: metrics
+  }),
+
+  // Generic activity creator for custom activities
+  generic: (userId: string, apiConfigId: string, provider: ApiProvider, type: ApiActivityType, status: ApiActivityStatus, title: string, description?: string, metadata?: any) => ({
+    userId,
+    apiConfigId,
+    provider,
+    type,
+    status,
+    title,
+    description,
+    metadata
   })
 } as const

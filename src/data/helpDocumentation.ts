@@ -112,6 +112,43 @@ export const connectionStatusDoc: DocSection = {
   ]
 }
 
+export const performanceTrendDoc: DocSection = {
+  id: 'performance-trend',
+  title: 'Performance Trend',
+  description: 'Advanced stacked area chart visualizing Google AdWords cost and conversion relationship over time',
+  goal: 'Analyze the correlation between advertising spend and conversion performance to optimize cost efficiency, identify high-ROI periods, and make data-driven budget allocation decisions.',
+  logic: 'Interactive stacked area chart displays two key metrics simultaneously: cost (orange gradient area) represents daily advertising spend, while conversions (green gradient area) shows daily conversion volume. The stacked visualization allows for immediate visual assessment of cost-effectiveness - when green area is proportionally larger than orange, it indicates efficient spending periods.',
+  dataSource: 'Real-time Google AdWords API integration via authenticated connection. Data aggregated from all active campaigns in your account, fetched from /api/apis/google-adwords/metrics endpoint with automatic refresh based on time range selection.',
+  calculations: [
+    'Daily Cost: Sum of all campaign spending across ad groups, keywords, and ad formats per calendar day',
+    'Daily Conversions: Total conversion actions tracked (purchases, leads, sign-ups) per calendar day',
+    'Cost-Per-Conversion (CPA): Calculated as Daily Cost ÷ Daily Conversions for efficiency analysis',
+    'Time Aggregation: Data points represent complete 24-hour periods in your account timezone',
+    'Stacked Display: Conversion values stack on top of cost values to show combined performance volume',
+    'Percentage Efficiency: Green area percentage vs. total area indicates conversion efficiency',
+    'Moving Averages: Trend lines smooth out daily fluctuations for pattern recognition'
+  ],
+  filters: [
+    'Dual Metric View: Simultaneously displays Cost ($USD) and Conversions (count) without toggling',
+    'Time Range: Configurable 7-day, 30-day, 90-day, or 1-year historical windows',
+    'Interactive Tooltips: Hover reveals exact cost and conversion values with formatted currency',
+    'Color Legend: Orange = Cost, Green = Conversions with visual indicators',
+    'Responsive Scaling: Y-axis automatically adjusts to accommodate both metric ranges',
+    'Data Density: Chart intelligently spaces data points based on selected time range'
+  ],
+  examples: [
+    'Efficient Campaign Day: $200 cost (orange) + 25 conversions (green) = $8 CPA - good performance',
+    'Inefficient Spending: $500 cost + 5 conversions = $100 CPA - needs optimization',
+    'High Volume Success: $1,000 cost + 150 conversions = $6.67 CPA - scale this performance',
+    'Weekend Pattern (B2B): Lower orange and green areas indicate reduced activity',
+    'Holiday Spike (Retail): Larger areas during peak shopping periods',
+    'Budget Exhaustion: Orange area drops to zero while potential conversions remain',
+    'Campaign Launch: Gradual increase in both areas as campaigns gain traction',
+    'Seasonal Trends: Q4 retail campaigns show 200-300% area increases',
+    'Optimization Success: Orange area decreases while green area maintains or increases'
+  ]
+}
+
 export const platformPerformanceDoc: DocSection = {
   id: 'platform-performance',
   title: 'Platform Performance Analytics',

@@ -3,6 +3,8 @@ import { PrismaClient, ApiProvider } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 import { decryptString } from '@/lib/encryption'
 import { logApiActivity, createApiActivity } from '@/lib/apiActivity'
+import { GoogleAdsService, GoogleAdsCredentials } from '@/lib/googleAdsService'
+import { GoogleAdsMetricsSync } from '@/lib/googleAdsMetricsSync'
 
 const prisma = new PrismaClient()
 
@@ -10,117 +12,190 @@ const prisma = new PrismaClient()
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
-    const userId = session?.user?.id || 'user_test_1'
-    
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const forceRefresh = searchParams.get('refresh') === 'true'
+
     const config = await prisma.apiConfiguration.findFirst({
       where: {
         userId: userId,
         provider: ApiProvider.GOOGLE_ADWORDS
       }
     })
-    
+
     if (!config) {
       return NextResponse.json(
         { error: 'No Google AdWords configuration found' },
         { status: 404 }
       )
     }
-    
+
     if (config.status !== 'ACTIVE') {
       return NextResponse.json(
         { error: 'Google AdWords API not configured or connection failed' },
         { status: 400 }
       )
     }
-    
-    // Decrypt credentials for API call
-    const clientSecret = decryptString(config.clientSecret)
-    const developerToken = decryptString(config.developerToken || '')
-    
-    // Mock campaigns data (replace with actual Google Ads API call)
-    const campaigns = await fetchGoogleAdsCampaigns({
-      clientId: config.clientId,
-      clientSecret,
-      developerToken
+
+    // Check if we should sync fresh data
+    const shouldSync = forceRefresh || await GoogleAdsMetricsSync.shouldSync(config.id, 1) // 1 hour max age for campaigns
+
+    if (shouldSync) {
+      console.log('[GoogleAdsCampaigns] Syncing fresh campaign data')
+      const syncService = await GoogleAdsMetricsSync.createFromApiConfig(config.id)
+      if (syncService) {
+        await syncService.syncCampaigns()
+      }
+    }
+
+    // Fetch campaigns from cache with latest metrics
+    const cachedCampaigns = await prisma.googleAdsCampaign.findMany({
+      where: {
+        apiConfigId: config.id
+      },
+      include: {
+        metrics: {
+          orderBy: {
+            date: 'desc'
+          },
+          take: 1 // Get only the latest metrics
+        }
+      }
     })
 
-    // Log the campaign fetch activity
+    if (cachedCampaigns.length === 0) {
+      // No cached campaigns, fallback to live API
+      console.log('[GoogleAdsCampaigns] No cached campaigns, using live API')
+
+      const clientSecret = decryptString(config.clientSecret)
+      const developerToken = decryptString(config.developerToken || '')
+      const refreshToken = config.refreshToken ? decryptString(config.refreshToken) : undefined
+      const customerId = config.apiKey || undefined
+
+      const googleAdsService = new GoogleAdsService({
+        client_id: config.clientId,
+        client_secret: clientSecret,
+        developer_token: developerToken,
+        refresh_token: refreshToken,
+        customer_id: customerId
+      })
+
+      const liveCampaigns = await googleAdsService.getCampaigns()
+
+      await logApiActivity(createApiActivity.campaignFetch(
+        userId,
+        config.id,
+        ApiProvider.GOOGLE_ADWORDS,
+        true,
+        liveCampaigns.length,
+        `Fallback: fetched ${liveCampaigns.length} campaigns (no cache)`
+      ))
+
+      return NextResponse.json({
+        campaigns: liveCampaigns,
+        total: liveCampaigns.length,
+        meta: {
+          dataSource: 'live_api_fallback',
+          cacheAvailable: false
+        },
+        lastUpdated: new Date().toISOString()
+      })
+    }
+
+    // Format cached campaigns with latest metrics
+    const formattedCampaigns = cachedCampaigns.map(campaign => {
+      const latestMetrics = campaign.metrics[0]
+
+      return {
+        id: campaign.campaignId,
+        name: campaign.name,
+        status: campaign.status,
+        budget: campaign.budget || 0,
+        spend: latestMetrics ? Math.round(latestMetrics.cost * 100) / 100 : 0,
+        impressions: latestMetrics ? latestMetrics.impressions : 0,
+        clicks: latestMetrics ? latestMetrics.clicks : 0,
+        conversions: latestMetrics ? latestMetrics.conversions : 0,
+        ctr: latestMetrics ? Math.round(latestMetrics.ctr * 100) / 100 : 0,
+        cpc: latestMetrics ? Math.round(latestMetrics.averageCpc * 100) / 100 : 0,
+        conversionRate: latestMetrics ? Math.round(latestMetrics.conversionRate * 100) / 100 : 0,
+        startDate: campaign.startDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+        endDate: campaign.endDate?.toISOString().split('T')[0] || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        lastSyncAt: campaign.lastSyncAt
+      }
+    })
+
+    // Log successful cached campaign fetch
     await logApiActivity(createApiActivity.campaignFetch(
       userId,
       config.id,
       ApiProvider.GOOGLE_ADWORDS,
       true,
-      campaigns.length,
-      `Successfully fetched ${campaigns.length} campaigns`
+      formattedCampaigns.length,
+      `Successfully served ${formattedCampaigns.length} campaigns from cache`
     ))
-    
+
+    const lastSyncAt = cachedCampaigns.reduce((latest, campaign) => {
+      return campaign.lastSyncAt > latest ? campaign.lastSyncAt : latest
+    }, new Date(0))
+
     return NextResponse.json({
-      campaigns,
-      total: campaigns.length,
+      campaigns: formattedCampaigns,
+      total: formattedCampaigns.length,
+      meta: {
+        dataSource: 'cache',
+        lastSyncAt: lastSyncAt.toISOString(),
+        cacheAge: Date.now() - lastSyncAt.getTime(),
+        freshDataAvailable: !shouldSync
+      },
       lastUpdated: new Date().toISOString()
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+      }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Google AdWords campaigns error:', error)
+    
+    // Try to log the error activity
+    try {
+      const session = await getSession()
+      const userId = session?.user?.id || 'cmfegx5kh0000uai1jn1e8skq'
+      
+      const config = await prisma.apiConfiguration.findFirst({
+        where: {
+          userId: userId,
+          provider: ApiProvider.GOOGLE_ADWORDS
+        }
+      })
+      
+      if (config) {
+        await logApiActivity(createApiActivity.campaignFetch(
+          userId,
+          config.id,
+          ApiProvider.GOOGLE_ADWORDS,
+          false,
+          0,
+          `Failed to fetch campaigns: ${error.message}`
+        ))
+      }
+    } catch (logError) {
+      console.error('Failed to log error activity:', logError)
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch campaigns' },
+      { 
+        error: 'Failed to fetch campaigns',
+        details: error.message || 'Unknown error occurred'
+      },
       { status: 500 }
     )
   }
-}
-
-async function fetchGoogleAdsCampaigns(credentials: {
-  clientId: string
-  clientSecret: string
-  developerToken: string
-}) {
-  // Mock implementation - replace with actual Google Ads API calls
-  await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API delay
-  
-  return [
-    {
-      id: 'campaign_001',
-      name: 'Summer Sale Campaign',
-      status: 'ENABLED',
-      budget: 5000,
-      spend: 3250.75,
-      impressions: 125000,
-      clicks: 3500,
-      conversions: 85,
-      ctr: 2.8,
-      cpc: 0.93,
-      conversionRate: 2.43,
-      startDate: '2024-06-01',
-      endDate: '2024-08-31'
-    },
-    {
-      id: 'campaign_002',
-      name: 'Brand Awareness',
-      status: 'ENABLED',
-      budget: 10000,
-      spend: 8750.25,
-      impressions: 450000,
-      clicks: 12500,
-      conversions: 210,
-      ctr: 2.78,
-      cpc: 0.70,
-      conversionRate: 1.68,
-      startDate: '2024-01-01',
-      endDate: '2024-12-31'
-    },
-    {
-      id: 'campaign_003',
-      name: 'Product Launch',
-      status: 'PAUSED',
-      budget: 3000,
-      spend: 2950.00,
-      impressions: 85000,
-      clicks: 2100,
-      conversions: 45,
-      ctr: 2.47,
-      cpc: 1.40,
-      conversionRate: 2.14,
-      startDate: '2024-05-15',
-      endDate: '2024-06-15'
-    }
-  ]
 }

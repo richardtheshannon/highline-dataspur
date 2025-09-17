@@ -1,97 +1,127 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
 import { platformPerformanceDoc } from '@/data/helpDocumentation'
 
-const data = [
-  {
-    name: 'Jan',
-    'Google Adwords': 4000,
-    'Facebook': 2400,
-    'Instagram': 2400,
-    'TikTok': 1800,
-  },
-  {
-    name: 'Feb',
-    'Google Adwords': 3000,
-    'Facebook': 1398,
-    'Instagram': 2210,
-    'TikTok': 2200,
-  },
-  {
-    name: 'Mar',
-    'Google Adwords': 2000,
-    'Facebook': 9800,
-    'Instagram': 2290,
-    'TikTok': 2800,
-  },
-  {
-    name: 'Apr',
-    'Google Adwords': 2780,
-    'Facebook': 3908,
-    'Instagram': 2000,
-    'TikTok': 3200,
-  },
-  {
-    name: 'May',
-    'Google Adwords': 1890,
-    'Facebook': 4800,
-    'Instagram': 2181,
-    'TikTok': 3600,
-  },
-  {
-    name: 'Jun',
-    'Google Adwords': 2390,
-    'Facebook': 3800,
-    'Instagram': 2500,
-    'TikTok': 4000,
-  },
-  {
-    name: 'Jul',
-    'Google Adwords': 3490,
-    'Facebook': 4300,
-    'Instagram': 2100,
-    'TikTok': 4200,
-  },
-  {
-    name: 'Aug',
-    'Google Adwords': 4200,
-    'Facebook': 3200,
-    'Instagram': 2800,
-    'TikTok': 3800,
-  },
-  {
-    name: 'Sep',
-    'Google Adwords': 3800,
-    'Facebook': 4100,
-    'Instagram': 3200,
-    'TikTok': 4500,
-  },
-  {
-    name: 'Oct',
-    'Google Adwords': 4500,
-    'Facebook': 4800,
-    'Instagram': 3600,
-    'TikTok': 5000,
-  },
-  {
-    name: 'Nov',
-    'Google Adwords': 4100,
-    'Facebook': 4200,
-    'Instagram': 3800,
-    'TikTok': 4800,
-  },
-  {
-    name: 'Dec',
-    'Google Adwords': 4800,
-    'Facebook': 5200,
-    'Instagram': 4200,
-    'TikTok': 5500,
-  },
-]
+// Platform colors
+const PLATFORM_COLORS: Record<string, string> = {
+  'Google AdWords': '#FF6B35',
+  'Facebook Ads': '#1877F2',
+  'Twitter Ads': '#1DA1F2',
+  'LinkedIn Ads': '#0077B5',
+  'Instagram': '#E4405F',
+  'TikTok': '#25D366'
+}
+
+interface PlatformMetrics {
+  chartData: any[]
+  insights: {
+    topPerformer: string | null
+    topValue: number
+    growthTrend: 'positive' | 'negative' | 'neutral'
+    totalPlatforms: number
+  }
+  connectedPlatforms: Array<{
+    provider: string
+    name: string
+    status: string
+  }>
+}
 
 export default function PlatformPerformanceChart() {
+  const [metrics, setMetrics] = useState<PlatformMetrics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchPlatformMetrics()
+  }, [])
+
+  const fetchPlatformMetrics = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/apis/platform-metrics')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch platform metrics')
+      }
+      
+      const data = await response.json()
+      console.log('Platform metrics data:', data) // Debug log
+      setMetrics(data)
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching platform metrics:', err)
+      setError('Failed to load platform metrics')
+      setMetrics(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="chart-container">
+        <div className="chart-header">
+          <DocumentedTitle 
+            className="chart-title"
+            title="Platform Performance Analytics"
+            documentation={platformPerformanceDoc}
+            as="h2"
+          />
+          <p className="chart-subtitle">Loading platform data...</p>
+        </div>
+        <div style={{ width: '100%', height: '400px', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="material-symbols-outlined animate-spin" style={{ fontSize: '2rem', color: 'var(--text-secondary)' }}>refresh</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !metrics || metrics.connectedPlatforms.length === 0) {
+    return (
+      <div className="chart-container">
+        <div className="chart-header">
+          <DocumentedTitle 
+            className="chart-title"
+            title="Platform Performance Analytics"
+            documentation={platformPerformanceDoc}
+            as="h2"
+          />
+          <p className="chart-subtitle">Connect advertising platforms to see performance metrics</p>
+        </div>
+        <div style={{ width: '100%', height: '400px', marginTop: '1rem' }}>
+          <div className="empty-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined empty-icon" style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>analytics</span>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>No Connected Platforms</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', maxWidth: '400px' }}>
+              Connect your advertising platforms to see performance analytics. Start by connecting Google AdWords, Facebook Ads, or other platforms.
+            </p>
+            <button 
+              onClick={() => window.location.href = '/dashboard/apis'}
+              className="form-btn form-btn-primary"
+              style={{ marginTop: '1.5rem' }}
+            >
+              <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>add_circle</span>
+              Connect Platform
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Get all platform names from the data
+  const platforms = metrics.connectedPlatforms.map(p => {
+    // Format provider name for display
+    const displayName = p.provider.replace('_', ' ').split(' ')
+      .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+      .join(' ')
+    return displayName
+  })
+
   return (
     <div className="chart-container">
       <div className="chart-header">
@@ -101,13 +131,15 @@ export default function PlatformPerformanceChart() {
           documentation={platformPerformanceDoc}
           as="h2"
         />
-        <p className="chart-subtitle">Monthly engagement metrics across advertising platforms</p>
+        <p className="chart-subtitle">
+          Monthly conversions across {metrics.totalPlatforms} connected platform{metrics.totalPlatforms !== 1 ? 's' : ''}
+        </p>
       </div>
       
       <div style={{ width: '100%', height: '400px', marginTop: '1rem' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={data}
+            data={metrics.chartData}
             margin={{
               top: 10,
               right: 20,
@@ -126,7 +158,7 @@ export default function PlatformPerformanceChart() {
               stroke="var(--text-secondary)"
               fontSize={12}
               tickMargin={10}
-              tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+              tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toString()}
             />
             <Tooltip 
               contentStyle={{
@@ -137,7 +169,7 @@ export default function PlatformPerformanceChart() {
                 fontSize: '12px'
               }}
               labelStyle={{ color: 'var(--text-primary)' }}
-              formatter={(value, name) => [`${value.toLocaleString()}`, name]}
+              formatter={(value: any, name: any) => [`${value.toLocaleString()}`, name]}
             />
             <Legend 
               wrapperStyle={{ 
@@ -146,51 +178,54 @@ export default function PlatformPerformanceChart() {
                 color: 'var(--text-secondary)'
               }}
             />
-            <Line 
-              type="monotone" 
-              dataKey="Google Adwords" 
-              stroke="#FF6B35" 
-              strokeWidth={2}
-              dot={{ fill: '#FF6B35', strokeWidth: 1, r: 3 }}
-              activeDot={{ r: 5, stroke: '#FF6B35', strokeWidth: 2 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="Facebook" 
-              stroke="#1877F2" 
-              strokeWidth={2}
-              dot={{ fill: '#1877F2', strokeWidth: 1, r: 3 }}
-              activeDot={{ r: 5, stroke: '#1877F2', strokeWidth: 2 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="Instagram" 
-              stroke="#E4405F" 
-              strokeWidth={2}
-              dot={{ fill: '#E4405F', strokeWidth: 1, r: 3 }}
-              activeDot={{ r: 5, stroke: '#E4405F', strokeWidth: 2 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="TikTok" 
-              stroke="#25D366" 
-              strokeWidth={2}
-              dot={{ fill: '#25D366', strokeWidth: 1, r: 3 }}
-              activeDot={{ r: 5, stroke: '#25D366', strokeWidth: 2 }}
-            />
+            {platforms.map((platform) => (
+              <Line 
+                key={platform}
+                type="monotone" 
+                dataKey={platform}
+                stroke={PLATFORM_COLORS[platform] || '#888888'}
+                strokeWidth={2}
+                dot={{ fill: PLATFORM_COLORS[platform] || '#888888', strokeWidth: 1, r: 3 }}
+                activeDot={{ r: 5, stroke: PLATFORM_COLORS[platform] || '#888888', strokeWidth: 2 }}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
       
       <div className="chart-insights" style={{ marginTop: '1rem' }}>
         <div className="insight-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+          {metrics.insights.topPerformer && (
+            <div className="insight-card">
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Top Performer</h4>
+              <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+                {metrics.insights.topPerformer} leads with {metrics.insights.topValue >= 1000 ? 
+                  `${(metrics.insights.topValue / 1000).toFixed(1)}K` : 
+                  metrics.insights.topValue.toString()} conversions
+              </p>
+            </div>
+          )}
           <div className="insight-card">
-            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Top Performer</h4>
-            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>TikTok leads with 5.5K December engagement</p>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Connected Platforms</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+              {metrics.totalPlatforms} platform{metrics.totalPlatforms !== 1 ? 's' : ''} actively monitored
+            </p>
           </div>
+          {metrics.insights.growthTrend && (
+            <div className="insight-card">
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Growth Trend</h4>
+              <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+                {metrics.insights.growthTrend === 'positive' ? 'Positive momentum across platforms' :
+                 metrics.insights.growthTrend === 'negative' ? 'Declining trend - review strategy' :
+                 'Stable performance across platforms'}
+              </p>
+            </div>
+          )}
           <div className="insight-card">
-            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Growth Trend</h4>
-            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>All platforms showing positive Q4 momentum</p>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Platform Status</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+              All connected platforms are {metrics.connectedPlatforms.every(p => p.status === 'ACTIVE') ? 'active' : 'configured'}
+            </p>
           </div>
         </div>
       </div>

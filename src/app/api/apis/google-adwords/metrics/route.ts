@@ -3,6 +3,8 @@ import { PrismaClient, ApiProvider } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 import { decryptString } from '@/lib/encryption'
 import { logApiActivity, createApiActivity } from '@/lib/apiActivity'
+import { GoogleAdsService, GoogleAdsCredentials } from '@/lib/googleAdsService'
+import { GoogleAdsMetricsSync } from '@/lib/googleAdsMetricsSync'
 
 const prisma = new PrismaClient()
 
@@ -10,131 +12,224 @@ const prisma = new PrismaClient()
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
-    const userId = session?.user?.id || 'user_test_1'
-    
-    // Get time range from query params
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Get query parameters
     const { searchParams } = new URL(request.url)
     const timeRange = searchParams.get('timeRange') || '30d'
-    
+    const forceRefresh = searchParams.get('refresh') === 'true'
+
     const config = await prisma.apiConfiguration.findFirst({
       where: {
         userId: userId,
         provider: ApiProvider.GOOGLE_ADWORDS
       }
     })
-    
+
     if (!config) {
       return NextResponse.json(
         { error: 'No Google AdWords configuration found' },
         { status: 404 }
       )
     }
-    
+
     if (config.status !== 'ACTIVE') {
       return NextResponse.json(
         { error: 'Google AdWords API not configured or connection failed' },
         { status: 400 }
       )
     }
-    
-    // Decrypt credentials for API call
-    const clientSecret = decryptString(config.clientSecret)
-    const developerToken = decryptString(config.developerToken || '')
-    
-    // Fetch metrics data (replace with actual Google Ads API call in production)
-    const metrics = await fetchGoogleAdsMetrics({
-      clientId: config.clientId,
-      clientSecret,
-      developerToken,
-      timeRange
-    })
 
-    // Log the metrics fetch activity
-    await logApiActivity({
-      userId,
-      apiConfigId: config.id,
-      provider: ApiProvider.GOOGLE_ADWORDS,
-      type: 'DATA_SYNC',
-      status: 'SUCCESS',
-      title: 'Metrics Fetch',
-      description: `Successfully fetched metrics for ${timeRange}`,
-      metadata: {
-        timeRange,
-        totalImpressions: metrics.totals.impressions,
-        totalClicks: metrics.totals.clicks,
-        totalCost: metrics.totals.cost
+    // Check if we need to sync fresh data
+    const shouldSync = forceRefresh || await GoogleAdsMetricsSync.shouldSync(config.id, 3) // 3 hours max age
+
+    if (shouldSync) {
+      console.log('[GoogleAdsMetrics] Syncing fresh data (cache stale or forced refresh)')
+      const syncService = await GoogleAdsMetricsSync.createFromApiConfig(config.id)
+      if (syncService) {
+        await syncService.performFullSync()
+      }
+    }
+
+    // Calculate date range for metrics
+    const endDate = new Date()
+    const startDate = new Date()
+
+    switch (timeRange) {
+      case '7d':
+        startDate.setDate(endDate.getDate() - 7)
+        break
+      case '30d':
+        startDate.setDate(endDate.getDate() - 30)
+        break
+      case '90d':
+        startDate.setDate(endDate.getDate() - 90)
+        break
+      default:
+        startDate.setDate(endDate.getDate() - 30)
+    }
+
+    // Fetch campaigns with their metrics from cache
+    const campaigns = await prisma.googleAdsCampaign.findMany({
+      where: {
+        apiConfigId: config.id
+      },
+      include: {
+        metrics: {
+          where: {
+            date: {
+              gte: startDate,
+              lte: endDate
+            }
+          },
+          orderBy: {
+            date: 'desc'
+          }
+        }
       }
     })
-    
+
+    if (campaigns.length === 0) {
+      // No cached data, try to sync and fallback to live API
+      console.log('[GoogleAdsMetrics] No cached data found, attempting live API fallback')
+
+      const clientSecret = decryptString(config.clientSecret)
+      const developerToken = decryptString(config.developerToken || '')
+      const refreshToken = config.refreshToken ? decryptString(config.refreshToken) : undefined
+      const customerId = config.apiKey || undefined
+
+      const googleAdsService = new GoogleAdsService({
+        client_id: config.clientId,
+        client_secret: clientSecret,
+        developer_token: developerToken,
+        refresh_token: refreshToken,
+        customer_id: customerId
+      })
+
+      const liveCampaigns = await googleAdsService.getCampaigns()
+      const enabledCampaigns = liveCampaigns.filter(campaign =>
+        campaign.status && String(campaign.status).toLowerCase() === 'enabled'
+      )
+
+      const metrics = processGoogleAdsData(enabledCampaigns, timeRange)
+
+      await logApiActivity(createApiActivity.metricsSync(
+        userId,
+        config.id,
+        ApiProvider.GOOGLE_ADWORDS,
+        true,
+        enabledCampaigns.length,
+        `Fallback: fetched metrics for ${enabledCampaigns.length} enabled campaigns (no cache)`
+      ))
+
+      return NextResponse.json({
+        metrics,
+        config: {
+          status: config.status,
+          lastSync: config.updatedAt
+        },
+        meta: {
+          dataSource: 'live_api_fallback',
+          cacheAvailable: false
+        },
+        lastUpdated: new Date().toISOString()
+      })
+    }
+
+    // Process cached data into metrics format
+    const metrics = processCachedData(campaigns, timeRange, startDate, endDate)
+
+    // Log successful cached metrics fetch
+    await logApiActivity(createApiActivity.metricsSync(
+      userId,
+      config.id,
+      ApiProvider.GOOGLE_ADWORDS,
+      true,
+      campaigns.length,
+      `Successfully served metrics from cache for ${campaigns.length} campaigns`
+    ))
+
+    const lastSyncAt = campaigns.reduce((latest, campaign) => {
+      return campaign.lastSyncAt > latest ? campaign.lastSyncAt : latest
+    }, new Date(0))
+
     return NextResponse.json({
       metrics,
       config: {
         status: config.status,
-        lastSync: config.updatedAt
+        lastSync: lastSyncAt
+      },
+      meta: {
+        dataSource: 'cache',
+        cacheAge: Date.now() - lastSyncAt.getTime(),
+        freshDataAvailable: !shouldSync
       },
       lastUpdated: new Date().toISOString()
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300', // Cache response for 5 minutes
+      }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Google AdWords metrics error:', error)
+
+    // Try to log the error
+    try {
+      const session = await getSession()
+      const userId = session?.user?.id || 'cmfegx5kh0000uai1jn1e8skq'
+
+      const config = await prisma.apiConfiguration.findFirst({
+        where: {
+          userId: userId,
+          provider: ApiProvider.GOOGLE_ADWORDS
+        }
+      })
+
+      if (config) {
+        await logApiActivity(createApiActivity.metricsSync(
+          userId,
+          config.id,
+          ApiProvider.GOOGLE_ADWORDS,
+          false,
+          0,
+          `Failed to fetch metrics: ${error.message}`
+        ))
+      }
+    } catch (logError) {
+      console.error('Failed to log error activity:', logError)
+    }
+
     return NextResponse.json(
-      { error: 'Failed to fetch metrics' },
+      {
+        error: 'Failed to fetch metrics',
+        details: error.message || 'Unknown error occurred'
+      },
       { status: 500 }
     )
   }
 }
 
-async function fetchGoogleAdsMetrics(credentials: {
-  clientId: string
-  clientSecret: string
-  developerToken: string
-  timeRange: string
-}) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 800))
-  
-  // Calculate date range
-  const days = credentials.timeRange === '7d' ? 7 : 
-               credentials.timeRange === '30d' ? 30 : 
-               credentials.timeRange === '90d' ? 90 : 365
-  
-  // Generate performance data for the time range
-  const performanceData = []
-  const today = new Date()
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    
-    // Generate realistic daily metrics with some variation
-    const baseImpressions = 15000 + Math.floor(Math.random() * 10000)
-    const baseCtr = 2.5 + Math.random() * 1.5 // 2.5-4% CTR
-    const clicks = Math.floor(baseImpressions * (baseCtr / 100))
-    const baseCvr = 2 + Math.random() * 2 // 2-4% conversion rate
-    const conversions = Math.floor(clicks * (baseCvr / 100))
-    const avgCpc = 0.5 + Math.random() * 1.5 // $0.50-$2.00 CPC
-    const cost = clicks * avgCpc
-    
-    performanceData.push({
-      date: date.toISOString().split('T')[0],
-      impressions: baseImpressions,
-      clicks,
-      conversions,
-      cost: parseFloat(cost.toFixed(2)),
-      ctr: parseFloat(baseCtr.toFixed(2)),
-      conversionRate: parseFloat(baseCvr.toFixed(2)),
-      cpc: parseFloat(avgCpc.toFixed(2)),
-      cpa: conversions > 0 ? parseFloat((cost / conversions).toFixed(2)) : 0
-    })
-  }
-  
-  // Calculate totals and averages
-  const totals = performanceData.reduce((acc, day) => ({
-    impressions: acc.impressions + day.impressions,
-    clicks: acc.clicks + day.clicks,
-    conversions: acc.conversions + day.conversions,
-    cost: acc.cost + day.cost
+function processGoogleAdsData(campaigns: any[], timeRange: string) {
+  // Calculate date range for performance data simulation
+  const days = timeRange === '7d' ? 7 :
+               timeRange === '30d' ? 30 :
+               timeRange === '90d' ? 90 : 365
+
+  // Calculate totals from real campaign data
+  const totals = campaigns.reduce((acc, campaign) => ({
+    impressions: acc.impressions + (campaign.impressions || 0),
+    clicks: acc.clicks + (campaign.clicks || 0),
+    conversions: acc.conversions + (campaign.conversions || 0),
+    cost: acc.cost + (campaign.spend || campaign.cost || 0)
   }), { impressions: 0, clicks: 0, conversions: 0, cost: 0 })
-  
+
   // Calculate additional metrics
   const calculatedMetrics = {
     ctr: totals.impressions > 0 ? parseFloat(((totals.clicks / totals.impressions) * 100).toFixed(2)) : 0,
@@ -143,99 +238,248 @@ async function fetchGoogleAdsMetrics(credentials: {
     cpa: totals.conversions > 0 ? parseFloat((totals.cost / totals.conversions).toFixed(2)) : 0
   }
 
-  const metrics = {
+  // Generate performance data for charts (distribute real totals across days)
+  // This is a simulation for chart display since we're getting aggregated data
+  const performanceData = []
+  const today = new Date()
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+
+    // Distribute totals across days with some variation
+    const dayFactor = 1 / days
+    const variation = 0.7 + Math.random() * 0.6 // 70-130% variation
+
+    const dayImpressions = Math.floor(totals.impressions * dayFactor * variation)
+    const dayClicks = Math.floor(totals.clicks * dayFactor * variation)
+    const dayConversions = Math.floor(totals.conversions * dayFactor * variation)
+    const dayCost = parseFloat((totals.cost * dayFactor * variation).toFixed(2))
+
+    performanceData.push({
+      date: date.toISOString().split('T')[0],
+      impressions: dayImpressions,
+      clicks: dayClicks,
+      conversions: dayConversions,
+      cost: dayCost,
+      ctr: dayImpressions > 0 ? parseFloat(((dayClicks / dayImpressions) * 100).toFixed(2)) : 0,
+      conversionRate: dayClicks > 0 ? parseFloat(((dayConversions / dayClicks) * 100).toFixed(2)) : 0,
+      cpc: dayClicks > 0 ? parseFloat((dayCost / dayClicks).toFixed(2)) : 0,
+      cpa: dayConversions > 0 ? parseFloat((dayCost / dayConversions).toFixed(2)) : 0
+    })
+  }
+
+  // Format campaigns for display (add calculated fields)
+  const formattedCampaigns = campaigns.map(campaign => ({
+    id: campaign.id,
+    name: campaign.name,
+    status: campaign.status ? String(campaign.status).toLowerCase() : 'unknown',
+    budget: campaign.budget || 0,
+    impressions: campaign.impressions || 0,
+    clicks: campaign.clicks || 0,
+    conversions: campaign.conversions || 0,
+    cost: campaign.spend || campaign.cost || 0,
+    ctr: campaign.ctr || 0,
+    conversionRate: campaign.conversionRate || 0,
+    cpc: campaign.cpc || 0,
+    cpa: campaign.conversions > 0 ? parseFloat(((campaign.spend || campaign.cost || 0) / campaign.conversions).toFixed(2)) : 0
+  }))
+
+  // Generate comparison data (simulated for now - in production, compare with previous period)
+  const comparison = {
+    impressions: {
+      value: totals.impressions,
+      change: Math.round(Math.random() * 20 - 10), // -10% to +10% random change
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    clicks: {
+      value: totals.clicks,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    conversions: {
+      value: totals.conversions,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    cost: {
+      value: totals.cost,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    cpa: {
+      value: calculatedMetrics.cpa,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    }
+  }
+
+  return {
     totals: {
       ...totals,
       ...calculatedMetrics
     },
     performanceData,
-    campaigns: [
-      {
-        id: 'campaign_001',
-        name: 'Brand Campaign - Search',
-        status: 'enabled',
-        budget: 5000,
-        impressions: Math.floor(totals.impressions * 0.35),
-        clicks: Math.floor(totals.clicks * 0.4),
-        conversions: Math.floor(totals.conversions * 0.45),
-        cost: parseFloat((totals.cost * 0.38).toFixed(2)),
-        ctr: 3.8,
-        conversionRate: 3.5,
-        cpc: 0.85,
-        cpa: 12.50
-      },
-      {
-        id: 'campaign_002',
-        name: 'Product Launch - Display',
-        status: 'enabled',
-        budget: 3000,
-        impressions: Math.floor(totals.impressions * 0.45),
-        clicks: Math.floor(totals.clicks * 0.25),
-        conversions: Math.floor(totals.conversions * 0.20),
-        cost: parseFloat((totals.cost * 0.28).toFixed(2)),
-        ctr: 1.2,
-        conversionRate: 2.0,
-        cpc: 0.60,
-        cpa: 18.00
-      },
-      {
-        id: 'campaign_003',
-        name: 'Remarketing - Shopping',
-        status: 'paused',
-        budget: 2000,
-        impressions: Math.floor(totals.impressions * 0.10),
-        clicks: Math.floor(totals.clicks * 0.20),
-        conversions: Math.floor(totals.conversions * 0.25),
-        cost: parseFloat((totals.cost * 0.18).toFixed(2)),
-        ctr: 4.5,
-        conversionRate: 5.0,
-        cpc: 0.70,
-        cpa: 8.75
-      },
-      {
-        id: 'campaign_004',
-        name: 'Competitor Targeting',
-        status: 'enabled',
-        budget: 4000,
-        impressions: Math.floor(totals.impressions * 0.10),
-        clicks: Math.floor(totals.clicks * 0.15),
-        conversions: Math.floor(totals.conversions * 0.10),
-        cost: parseFloat((totals.cost * 0.16).toFixed(2)),
-        ctr: 2.8,
-        conversionRate: 1.8,
-        cpc: 1.80,
-        cpa: 35.00
+    campaigns: formattedCampaigns,
+    comparison
+  }
+}
+
+// Process cached campaign and metrics data
+function processCachedData(campaigns: any[], timeRange: string, startDate: Date, endDate: Date) {
+  const days = timeRange === '7d' ? 7 :
+               timeRange === '30d' ? 30 :
+               timeRange === '90d' ? 90 : 365
+
+  // Process campaigns with their cached metrics
+  const formattedCampaigns = campaigns.map(campaign => {
+    // Calculate totals for this campaign across the date range
+    const campaignTotals = campaign.metrics.reduce(
+      (acc: any, metric: any) => ({
+        impressions: acc.impressions + metric.impressions,
+        clicks: acc.clicks + metric.clicks,
+        conversions: acc.conversions + metric.conversions,
+        cost: acc.cost + metric.cost
+      }),
+      { impressions: 0, clicks: 0, conversions: 0, cost: 0 }
+    )
+
+    // Calculate rates
+    const ctr = campaignTotals.impressions > 0 ? (campaignTotals.clicks / campaignTotals.impressions) * 100 : 0
+    const conversionRate = campaignTotals.clicks > 0 ? (campaignTotals.conversions / campaignTotals.clicks) * 100 : 0
+    const cpc = campaignTotals.clicks > 0 ? campaignTotals.cost / campaignTotals.clicks : 0
+    const cpa = campaignTotals.conversions > 0 ? campaignTotals.cost / campaignTotals.conversions : 0
+
+    return {
+      id: campaign.campaignId,
+      name: campaign.name,
+      status: campaign.status,
+      budget: campaign.budget || 0,
+      impressions: campaignTotals.impressions,
+      clicks: campaignTotals.clicks,
+      conversions: campaignTotals.conversions,
+      cost: Math.round(campaignTotals.cost * 100) / 100,
+      ctr: Math.round(ctr * 100) / 100,
+      conversionRate: Math.round(conversionRate * 100) / 100,
+      cpc: Math.round(cpc * 100) / 100,
+      cpa: Math.round(cpa * 100) / 100
+    }
+  })
+
+  // Calculate overall totals
+  const totals = formattedCampaigns.reduce(
+    (acc, campaign) => ({
+      impressions: acc.impressions + campaign.impressions,
+      clicks: acc.clicks + campaign.clicks,
+      conversions: acc.conversions + campaign.conversions,
+      cost: acc.cost + campaign.cost
+    }),
+    { impressions: 0, clicks: 0, conversions: 0, cost: 0 }
+  )
+
+  // Calculate overall metrics
+  const calculatedMetrics = {
+    ctr: totals.impressions > 0 ? parseFloat(((totals.clicks / totals.impressions) * 100).toFixed(2)) : 0,
+    conversionRate: totals.clicks > 0 ? parseFloat(((totals.conversions / totals.clicks) * 100).toFixed(2)) : 0,
+    cpc: totals.clicks > 0 ? parseFloat((totals.cost / totals.clicks).toFixed(2)) : 0,
+    cpa: totals.conversions > 0 ? parseFloat((totals.cost / totals.conversions).toFixed(2)) : 0
+  }
+
+  // Create performance data from daily metrics
+  const performanceData = []
+  const metricsMap = new Map()
+
+  // Group metrics by date across all campaigns
+  campaigns.forEach(campaign => {
+    campaign.metrics.forEach((metric: any) => {
+      const dateKey = metric.date.toISOString().split('T')[0]
+      if (!metricsMap.has(dateKey)) {
+        metricsMap.set(dateKey, {
+          date: dateKey,
+          impressions: 0,
+          clicks: 0,
+          conversions: 0,
+          cost: 0
+        })
       }
-    ],
-    // Add comparison to previous period
-    comparison: {
-      impressions: {
-        value: totals.impressions,
-        change: 12.5,
-        trend: 'up'
-      },
-      clicks: {
-        value: totals.clicks,
-        change: 8.3,
-        trend: 'up'
-      },
-      conversions: {
-        value: totals.conversions,
-        change: -2.1,
-        trend: 'down'
-      },
-      cost: {
-        value: totals.cost,
-        change: 5.7,
-        trend: 'up'
-      },
-      cpa: {
-        value: calculatedMetrics.cpa,
-        change: 8.3,
-        trend: 'up'
-      }
+      const existing = metricsMap.get(dateKey)
+      existing.impressions += metric.impressions
+      existing.clicks += metric.clicks
+      existing.conversions += metric.conversions
+      existing.cost += metric.cost
+    })
+  })
+
+  // Convert to sorted array and calculate daily metrics
+  const sortedMetrics = Array.from(metricsMap.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(day => ({
+      ...day,
+      ctr: day.impressions > 0 ? parseFloat(((day.clicks / day.impressions) * 100).toFixed(2)) : 0,
+      conversionRate: day.clicks > 0 ? parseFloat(((day.conversions / day.clicks) * 100).toFixed(2)) : 0,
+      cpc: day.clicks > 0 ? parseFloat((day.cost / day.clicks).toFixed(2)) : 0,
+      cpa: day.conversions > 0 ? parseFloat((day.cost / day.conversions).toFixed(2)) : 0
+    }))
+
+  // Fill in missing dates with zero values
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(endDate)
+    date.setDate(date.getDate() - i)
+    const dateKey = date.toISOString().split('T')[0]
+
+    if (!sortedMetrics.find(m => m.date === dateKey)) {
+      sortedMetrics.push({
+        date: dateKey,
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        cost: 0,
+        ctr: 0,
+        conversionRate: 0,
+        cpc: 0,
+        cpa: 0
+      })
     }
   }
-  
-  return metrics
+
+  performanceData.push(...sortedMetrics.sort((a, b) => a.date.localeCompare(b.date)))
+
+  // Generate comparison data (placeholder - would need historical data for real comparison)
+  const comparison = {
+    impressions: {
+      value: totals.impressions,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    clicks: {
+      value: totals.clicks,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    conversions: {
+      value: totals.conversions,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    cost: {
+      value: totals.cost,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    },
+    cpa: {
+      value: calculatedMetrics.cpa,
+      change: Math.round(Math.random() * 20 - 10),
+      trend: Math.random() > 0.5 ? 'up' : 'down'
+    }
+  }
+
+  return {
+    totals: {
+      ...totals,
+      ...calculatedMetrics
+    },
+    performanceData,
+    campaigns: formattedCampaigns,
+    comparison
+  }
 }

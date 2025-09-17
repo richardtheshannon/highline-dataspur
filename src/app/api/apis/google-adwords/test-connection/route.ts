@@ -3,6 +3,7 @@ import { PrismaClient, ApiProvider } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 import { decryptString } from '@/lib/encryption'
 import { logApiActivity, createApiActivity } from '@/lib/apiActivity'
+import { GoogleAdsService } from '@/lib/googleAdsService'
 
 const prisma = new PrismaClient()
 
@@ -29,15 +30,19 @@ export async function POST(request: NextRequest) {
     // Decrypt credentials for testing
     const clientSecret = decryptString(config.clientSecret)
     const developerToken = decryptString(config.developerToken || '')
-    const apiKey = config.apiKey ? decryptString(config.apiKey) : null
+    const refreshToken = config.refreshToken ? decryptString(config.refreshToken) : undefined
+    const customerId = config.apiKey // Customer ID stored in apiKey field
     
-    // Mock API connection test (replace with actual Google Ads API call)
-    const testResult = await testGoogleAdsConnection({
-      clientId: config.clientId,
-      clientSecret,
-      developerToken,
-      apiKey
+    // Test real Google Ads API connection
+    const googleAdsService = new GoogleAdsService({
+      client_id: config.clientId,
+      client_secret: clientSecret,
+      developer_token: developerToken,
+      refresh_token: refreshToken,
+      customer_id: customerId
     })
+    
+    const testResult = await googleAdsService.testConnection()
     
     // Update configuration status based on test result
     await prisma.apiConfiguration.update({
@@ -59,50 +64,43 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: testResult.success,
-      message: testResult.message,
-      details: testResult.details
+      details: testResult.details,
+      data: testResult.data
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Google AdWords test connection error:', error)
+    
+    // Try to log the error activity
+    try {
+      const session = await getSession()
+      const userId = session?.user?.id || 'user_test_1'
+      
+      const config = await prisma.apiConfiguration.findFirst({
+        where: {
+          userId: userId,
+          provider: ApiProvider.GOOGLE_ADWORDS
+        }
+      })
+      
+      if (config) {
+        await logApiActivity(createApiActivity.connectionTest(
+          userId,
+          config.id,
+          ApiProvider.GOOGLE_ADWORDS,
+          false,
+          `Connection test failed: ${error.message}`
+        ))
+      }
+    } catch (logError) {
+      console.error('Failed to log error activity:', logError)
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to test connection' },
+      { 
+        success: false,
+        details: error.message || 'Failed to test connection'
+      },
       { status: 500 }
     )
-  }
-}
-
-async function testGoogleAdsConnection(credentials: {
-  clientId: string
-  clientSecret: string
-  developerToken: string
-  apiKey?: string | null
-}) {
-  // Mock implementation - in production, this would make actual API calls
-  // to validate the credentials with Google Ads API
-  
-  try {
-    // Simulate API validation
-    if (!credentials.clientId || !credentials.clientSecret || !credentials.developerToken) {
-      return {
-        success: false,
-        message: 'Missing required credentials',
-        details: 'Client ID, Client Secret, and Developer Token are required'
-      }
-    }
-    
-    // Mock successful connection
-    await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate API call delay
-    
-    return {
-      success: true,
-      message: 'Connection successful',
-      details: 'Successfully connected to Google Ads API. Ready to fetch campaigns and data.'
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Connection failed',
-      details: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
   }
 }

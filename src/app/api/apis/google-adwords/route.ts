@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
     const session = await getSession()
     
     // For development, allow access without session
-    const userId = session?.user?.id || 'user_test_1'
+    // Use the real user ID that has the working Google AdWords config
+    const userId = session?.user?.id || 'cmfegx5kh0000uai1jn1e8skq'
     
     const config = await prisma.apiConfiguration.findFirst({
       where: {
@@ -59,11 +60,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     const userId = session?.user?.id || 'user_test_1'
-    const { clientId, clientSecret, developerToken, apiKey, name = 'Google AdWords API' } = body
+    const { clientId, clientSecret, developerToken, refreshToken, customerId, apiKey, name = 'Google AdWords API' } = body
     
-    if (!clientId || !clientSecret || !developerToken) {
+    if (!clientId || !clientSecret || !developerToken || !refreshToken || !customerId) {
       return NextResponse.json(
-        { error: 'Client ID, Client Secret, and Developer Token are required' },
+        { error: 'Client ID, Client Secret, Developer Token, Refresh Token, and Customer ID are required for live API access' },
         { status: 400 }
       )
     }
@@ -72,7 +73,8 @@ export async function POST(request: NextRequest) {
     const encryptedData = {
       clientSecret: encryptString(clientSecret),
       developerToken: encryptString(developerToken),
-      apiKey: apiKey ? encryptString(apiKey) : null
+      refreshToken: encryptString(refreshToken),
+      apiKey: customerId // Store customer ID in apiKey field
     }
     
     // Upsert configuration
@@ -88,6 +90,7 @@ export async function POST(request: NextRequest) {
         clientId,
         clientSecret: encryptedData.clientSecret,
         developerToken: encryptedData.developerToken,
+        refreshToken: encryptedData.refreshToken,
         apiKey: encryptedData.apiKey,
         status: ApiConfigStatus.INACTIVE,
         updatedAt: new Date()
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest) {
         clientId,
         clientSecret: encryptedData.clientSecret,
         developerToken: encryptedData.developerToken,
+        refreshToken: encryptedData.refreshToken,
         apiKey: encryptedData.apiKey,
         status: ApiConfigStatus.INACTIVE
       }

@@ -29,7 +29,10 @@
       "Read(/C:\\Users\\icos\\00_DEPLOY\\summit-guardian-com\\hla-dataspur-v1/**)",
       "Read(/C:\\Users\\icos\\00_DEPLOY\\summit-guardian-com\\hla-dataspur-v1\\_TEMP/**)",
       "Read(/C:\\Users\\icos\\00_DEPLOY\\summit-guardian-com\\hla-dataspur-v1\\_TEMP/**)",
-      "Read(/C:\\Users\\icos\\00_DEPLOY\\summit-guardian-com\\hla-dataspur-v1/**)"
+      "Read(/C:\\Users\\icos\\00_DEPLOY\\summit-guardian-com\\hla-dataspur-v1/**)",
+      "Bash(python:*)",
+      "WebSearch",
+      "WebFetch(domain:developers.google.com)"
     ],
     "deny": [],
     "ask": []
