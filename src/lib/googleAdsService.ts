@@ -27,8 +27,10 @@ export interface GoogleAdsCampaign {
 export class GoogleAdsService {
   private client: GoogleAdsApi;
   private customer?: Customer;
+  private credentials: GoogleAdsCredentials;
 
   constructor(credentials: GoogleAdsCredentials) {
+    this.credentials = credentials;
     this.client = new GoogleAdsApi({
       client_id: credentials.client_id,
       client_secret: credentials.client_secret,
@@ -70,7 +72,7 @@ export class GoogleAdsService {
         LIMIT 1
       `);
 
-      if (customerInfo && customerInfo.length > 0) {
+      if (customerInfo && customerInfo.length > 0 && customerInfo[0].customer) {
         const customer = customerInfo[0].customer;
         return {
           success: true,
@@ -201,7 +203,7 @@ export class GoogleAdsService {
     try {
       // If we have a manager account, we can list sub-accounts
       if (managerCustomerId) {
-        const refreshToken = this.customer?.credentials?.refresh_token;
+        const refreshToken = this.credentials.refresh_token;
         if (!refreshToken) {
           throw new Error('Refresh token not available for manager account access');
         }
