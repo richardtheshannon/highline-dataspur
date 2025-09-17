@@ -266,10 +266,10 @@ export class GoogleAdsService {
         return [];
       }
 
-      // Create campaign filter
-      const campaignFilter = campaignIds.map(id => `campaign.id = '${id}'`).join(' OR ');
-
       // Query daily metrics for specific campaigns and date range
+      // Use IN clause instead of OR for better SQL compatibility
+      const campaignIdList = campaignIds.map(id => `'${id}'`).join(', ');
+
       const dailyMetrics = await this.customer.query(`
         SELECT
           campaign.id,
@@ -282,7 +282,7 @@ export class GoogleAdsService {
           metrics.average_cpc
         FROM campaign
         WHERE
-          (${campaignFilter})
+          campaign.id IN (${campaignIdList})
           AND segments.date >= '${startDateStr}'
           AND segments.date <= '${endDateStr}'
         ORDER BY campaign.id, segments.date
