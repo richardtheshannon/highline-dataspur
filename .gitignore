@@ -47,3 +47,9 @@ next-env.d.ts
 
 # DOCS
 /_DOCS
+
+# Component Documentation
+# All claude.md files are excluded from version control
+# These files document component structure and implementation
+**/claude.md
+!_TEMP/CLAUDE.md

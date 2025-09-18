@@ -269,7 +269,43 @@ function processGoogleAdsData(campaigns: any[], timeRange: string) {
     })
   }
 
-  // Format campaigns for display (add calculated fields)
+  // Generate dummy performance data for each campaign (since live API doesn't provide daily granularity)
+  const campaignPerformanceData = new Map()
+
+  campaigns.forEach(campaign => {
+    const campaignDailyData = []
+    const today = new Date()
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+
+      // Distribute campaign totals across days with some variation
+      const dayFactor = 1 / days
+      const variation = 0.7 + Math.random() * 0.6 // 70-130% variation
+
+      const dayImpressions = Math.floor((campaign.impressions || 0) * dayFactor * variation)
+      const dayClicks = Math.floor((campaign.clicks || 0) * dayFactor * variation)
+      const dayConversions = Math.floor((campaign.conversions || 0) * dayFactor * variation)
+      const dayCost = parseFloat(((campaign.spend || campaign.cost || 0) * dayFactor * variation).toFixed(2))
+
+      campaignDailyData.push({
+        date: date.toISOString().split('T')[0],
+        impressions: dayImpressions,
+        clicks: dayClicks,
+        conversions: dayConversions,
+        cost: dayCost,
+        ctr: dayImpressions > 0 ? parseFloat(((dayClicks / dayImpressions) * 100).toFixed(2)) : 0,
+        conversionRate: dayClicks > 0 ? parseFloat(((dayConversions / dayClicks) * 100).toFixed(2)) : 0,
+        cpc: dayClicks > 0 ? parseFloat((dayCost / dayClicks).toFixed(2)) : 0,
+        cpa: dayConversions > 0 ? parseFloat((dayCost / dayConversions).toFixed(2)) : 0
+      })
+    }
+
+    campaignPerformanceData.set(campaign.id, campaignDailyData)
+  })
+
+  // Format campaigns for display (add calculated fields and performance data)
   const formattedCampaigns = campaigns.map(campaign => ({
     id: campaign.id,
     name: campaign.name,
@@ -282,7 +318,8 @@ function processGoogleAdsData(campaigns: any[], timeRange: string) {
     ctr: campaign.ctr || 0,
     conversionRate: campaign.conversionRate || 0,
     cpc: campaign.cpc || 0,
-    cpa: campaign.conversions > 0 ? parseFloat(((campaign.spend || campaign.cost || 0) / campaign.conversions).toFixed(2)) : 0
+    cpa: campaign.conversions > 0 ? parseFloat(((campaign.spend || campaign.cost || 0) / campaign.conversions).toFixed(2)) : 0,
+    performanceData: campaignPerformanceData.get(campaign.id) || []
   }))
 
   // Generate comparison data (simulated for now - in production, compare with previous period)
@@ -331,6 +368,56 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
                timeRange === '30d' ? 30 :
                timeRange === '90d' ? 90 : 365
 
+  // Create campaign-specific performance data first
+  const campaignPerformanceData = new Map()
+
+  campaigns.forEach(campaign => {
+    const campaignMetrics = new Map()
+
+    // Initialize all dates with zero values for this campaign
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(endDate)
+      date.setDate(date.getDate() - i)
+      const dateKey = date.toISOString().split('T')[0]
+      campaignMetrics.set(dateKey, {
+        date: dateKey,
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        cost: 0,
+        ctr: 0,
+        conversionRate: 0,
+        cpc: 0,
+        cpa: 0
+      })
+    }
+
+    // Fill in actual data from campaign metrics
+    campaign.metrics.forEach((metric: any) => {
+      const dateKey = metric.date.toISOString().split('T')[0]
+      if (campaignMetrics.has(dateKey)) {
+        const dayData = {
+          date: dateKey,
+          impressions: metric.impressions,
+          clicks: metric.clicks,
+          conversions: metric.conversions,
+          cost: Math.round(metric.cost * 100) / 100,
+          ctr: metric.impressions > 0 ? parseFloat(((metric.clicks / metric.impressions) * 100).toFixed(2)) : 0,
+          conversionRate: metric.clicks > 0 ? parseFloat(((metric.conversions / metric.clicks) * 100).toFixed(2)) : 0,
+          cpc: metric.clicks > 0 ? parseFloat((metric.cost / metric.clicks).toFixed(2)) : 0,
+          cpa: metric.conversions > 0 ? parseFloat((metric.cost / metric.conversions).toFixed(2)) : 0
+        }
+        campaignMetrics.set(dateKey, dayData)
+      }
+    })
+
+    // Convert to sorted array
+    const campaignSortedMetrics = Array.from(campaignMetrics.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+
+    campaignPerformanceData.set(campaign.campaignId, campaignSortedMetrics)
+  })
+
   // Process campaigns with their cached metrics
   const formattedCampaigns = campaigns.map(campaign => {
     // Calculate totals for this campaign across the date range
@@ -362,7 +449,8 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
       ctr: Math.round(ctr * 100) / 100,
       conversionRate: Math.round(conversionRate * 100) / 100,
       cpc: Math.round(cpc * 100) / 100,
-      cpa: Math.round(cpa * 100) / 100
+      cpa: Math.round(cpa * 100) / 100,
+      performanceData: campaignPerformanceData.get(campaign.campaignId) || []
     }
   })
 

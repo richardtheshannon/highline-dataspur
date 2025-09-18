@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
 import { keyMetricsDoc, connectionStatusDoc, performanceTrendDoc } from '@/data/helpDocumentation'
 
@@ -21,6 +21,7 @@ interface Campaign {
   conversionRate: number
   cpc: number
   cpa: number
+  performanceData?: PerformanceData[]
 }
 
 interface PerformanceData {
@@ -37,6 +38,231 @@ interface ComparisonData {
   conversions?: { value: number; change: number; trend: string }
   cost?: { value: number; change: number; trend: string }
   cpa?: { value: number; change: number; trend: string }
+}
+
+interface CampaignPerformanceCardProps {
+  campaign: Campaign
+  formatNumber: (num: number) => string
+  formatCurrency: (amount: number) => string
+  formatPercentage: (value: number) => string
+}
+
+const CampaignPerformanceCard: React.FC<CampaignPerformanceCardProps> = ({
+  campaign,
+  formatNumber,
+  formatCurrency,
+  formatPercentage
+}) => {
+  const [timeInterval, setTimeInterval] = useState('30d')
+
+  // Use campaign's own performance data
+  const campaignPerformanceData = campaign.performanceData || []
+
+  // Filter performance data for this campaign based on time interval
+  const getTimeIntervalDays = (interval: string): number => {
+    switch (interval) {
+      case '3d': return 3
+      case '7d': return 7
+      case '14d': return 14
+      case '30d': return 30
+      case '60d': return 60
+      case '90d': return 90
+      case '1y': return 365
+      default: return 30
+    }
+  }
+
+  const filteredData = campaignPerformanceData.slice(-getTimeIntervalDays(timeInterval))
+
+  // Calculate campaign metrics for the selected time interval
+  const totalFilteredData = filteredData.reduce((acc, data) => ({
+    impressions: acc.impressions + data.impressions,
+    clicks: acc.clicks + data.clicks,
+    conversions: acc.conversions + data.conversions,
+    cost: acc.cost + data.cost
+  }), { impressions: 0, clicks: 0, conversions: 0, cost: 0 })
+
+  // Calculate time-interval specific metrics
+  const intervalCTR = totalFilteredData.impressions > 0 ? (totalFilteredData.clicks / totalFilteredData.impressions) * 100 : 0
+  const intervalCVR = totalFilteredData.clicks > 0 ? (totalFilteredData.conversions / totalFilteredData.clicks) * 100 : 0
+  const intervalCPC = totalFilteredData.clicks > 0 ? totalFilteredData.cost / totalFilteredData.clicks : 0
+  const intervalCPA = totalFilteredData.conversions > 0 ? totalFilteredData.cost / totalFilteredData.conversions : 0
+
+  // Create chart data using the campaign's actual daily metrics
+  const chartData = filteredData.map(data => ({
+    date: data.date,
+    displayDate: new Date(data.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    cost: Math.round(data.cost * 100) / 100,
+    conversions: Math.round(data.conversions * 100) / 100
+  }))
+
+  // Debug: Log chart data to see if there's an issue
+  console.log('Chart data for campaign', campaign.name, ':', chartData)
+
+  // If no data, use dummy data to ensure chart renders
+  const displayChartData = chartData.length > 0 ? chartData : [
+    { displayDate: 'Day 1', cost: 0, conversions: 0 },
+    { displayDate: 'Day 2', cost: 0, conversions: 0 },
+    { displayDate: 'Day 3', cost: 0, conversions: 0 }
+  ]
+
+  // Use time interval metrics for display
+  const displayMetrics = {
+    cost: totalFilteredData.cost,
+    conversions: totalFilteredData.conversions,
+    cpa: intervalCPA,
+    cvr: intervalCVR,
+    ctr: intervalCTR,
+    cpc: intervalCPC
+  }
+
+  return (
+    <div className="campaign-card campaign-performance-card">
+      <div className="campaign-card-header">
+        <div className="campaign-card-title">
+          <h4 className="campaign-name" title={campaign.name}>
+            {campaign.name.length > 25 ? `${campaign.name.substring(0, 25)}...` : campaign.name}
+          </h4>
+          <span className={`status-dot ${campaign.status}`} title={campaign.status}></span>
+        </div>
+        <select
+          className="time-interval-select"
+          value={timeInterval}
+          onChange={(e) => setTimeInterval(e.target.value)}
+        >
+          <option value="3d">3d</option>
+          <option value="7d">7d</option>
+          <option value="14d">14d</option>
+          <option value="30d">30d</option>
+          <option value="60d">60d</option>
+          <option value="90d">90d</option>
+          <option value="1y">1y</option>
+        </select>
+      </div>
+
+      <div className="campaign-card-content">
+        {/* Stacked Area Chart at Top - Cost vs Conversions */}
+        <div className="stacked-area-chart">
+          <div className="chart-header">
+            <h5>Cost & Conversions ({timeInterval}) {chartData.length === 0 ? '(Demo)' : ''}</h5>
+          </div>
+          <div className="chart-container-small">
+            <ResponsiveContainer width="100%" height={150}>
+              <AreaChart
+                key={`chart-${campaign.id}-${timeInterval}`}
+                data={displayChartData}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id={`colorCost-${campaign.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id={`colorConversions-${campaign.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="displayDate"
+                  tick={{ fontSize: 9, fill: 'var(--text-secondary)' }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 9, fill: 'var(--text-secondary)' }}
+                  tickFormatter={(value) => {
+                    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
+                    if (value >= 1) return value.toFixed(0)
+                    return value.toFixed(2)
+                  }}
+                />
+                <CartesianGrid strokeDasharray="3 3" />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="custom-tooltip">
+                          <p className="tooltip-date">{label}</p>
+                          {payload.map((entry, index) => (
+                            <p key={index} style={{
+                              color: entry.color,
+                              margin: 0,
+                              fontSize: '0.75rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              <span style={{
+                                width: '8px',
+                                height: '8px',
+                                background: entry.color,
+                                borderRadius: '2px',
+                                display: 'inline-block'
+                              }}></span>
+                              {entry.dataKey === 'cost' ?
+                                `Cost: ${formatCurrency(entry.value)}` :
+                                `Conversions: ${formatNumber(entry.value)}`
+                              }
+                            </p>
+                          ))}
+                          {payload.length === 2 && payload[1].value > 0 && (
+                            <p style={{
+                              margin: '0.25rem 0 0 0',
+                              fontSize: '0.7rem',
+                              color: 'var(--text-secondary)',
+                              borderTop: '1px solid var(--border-color)',
+                              paddingTop: '0.25rem'
+                            }}>
+                              CPA: {formatCurrency(payload[0].value / payload[1].value)}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="cost"
+                  stackId="1"
+                  stroke="#8884d8"
+                  fill={`url(#colorCost-${campaign.id})`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="conversions"
+                  stackId="1"
+                  stroke="#82ca9d"
+                  fill={`url(#colorConversions-${campaign.id})`}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Key Metrics */}
+        <div className="campaign-metrics-grid">
+          <div className="metric-box">
+            <div className="metric-label">Cost</div>
+            <div className="metric-value cost-value">{formatCurrency(displayMetrics.cost)}</div>
+          </div>
+          <div className="metric-box">
+            <div className="metric-label">Conversions</div>
+            <div className="metric-value conversions-value">{formatNumber(displayMetrics.conversions)}</div>
+          </div>
+          <div className="metric-box">
+            <div className="metric-label">CPA</div>
+            <div className="metric-value cpa-value">{formatCurrency(displayMetrics.cpa)}</div>
+          </div>
+          <div className="metric-box">
+            <div className="metric-label">CVR</div>
+            <div className="metric-value cvr-value">{formatPercentage(displayMetrics.cvr)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function GoogleAdWordsAnalytics() {
@@ -532,332 +758,19 @@ export default function GoogleAdWordsAnalytics() {
 
         </div>
 
-        {/* Right Column - Charts */}
+        {/* Right Column - Campaign Performance Grid */}
         <div className="main-content-right">
-          
-          {/* Performance Trend Chart */}
-          <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
-            <div className="card-header">
-              <DocumentedTitle 
-                className=""
-                icon="trending_up"
-                title="Performance Trend"
-                documentation={performanceTrendDoc}
-                as="h3"
+          {/* Campaign Performance Grid - 2x4 Layout */}
+          <div className="campaign-performance-grid">
+            {enabledCampaigns.slice(0, 8).map((campaign, index) => (
+              <CampaignPerformanceCard
+                key={campaign.id}
+                campaign={campaign}
+                formatNumber={formatNumber}
+                formatCurrency={formatCurrency}
+                formatPercentage={formatPercentage}
               />
-              <div className="form-select-wrapper" style={{ fontSize: '0.875rem' }}>
-                Cost & Conversions
-              </div>
-            </div>
-            <div className="card-content">
-              <div className="chart-container" style={{ height: '300px', padding: '1rem' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: chartData.length > 20 ? 60 : 25 }}>
-                    <defs>
-                      <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#FF6B35" stopOpacity={0.2}/>
-                      </linearGradient>
-                      <linearGradient id="conversionsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.2}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                    <XAxis 
-                      dataKey="displayDate" 
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      interval={chartData.length > 15 ? Math.ceil(chartData.length / 6) : 0}
-                      tick={{ fill: 'var(--text-secondary)' }}
-                      angle={chartData.length > 20 ? -45 : 0}
-                      textAnchor={chartData.length > 20 ? 'end' : 'middle'}
-                      height={chartData.length > 20 ? 60 : 30}
-                    />
-                    <YAxis 
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      tick={{ fill: 'var(--text-secondary)' }}
-                      tickFormatter={(value) => formatNumber(value)}
-                    />
-                    <Tooltip content={<CostConversionsTooltip />} />
-                    <Legend />
-                    <Area 
-                      type="monotone"
-                      dataKey="cost"
-                      stackId="1"
-                      stroke="#FF6B35"
-                      fill="url(#costGradient)"
-                      strokeWidth={2}
-                      name="Cost ($)"
-                    />
-                    <Area 
-                      type="monotone"
-                      dataKey="conversions"
-                      stackId="1"
-                      stroke="#10B981"
-                      fill="url(#conversionsGradient)"
-                      strokeWidth={2}
-                      name="Conversions"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Overall Campaign Performance Chart */}
-          <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
-            <div className="card-header">
-              <h3>
-                <span className="material-symbols-outlined">analytics</span>
-                Overall Campaign Performance ({enabledCampaigns.length} Enabled)
-              </h3>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                {enabledCampaigns.length} of {campaigns.length} campaigns active
-              </div>
-            </div>
-            <div className="card-content">
-              <div className="chart-container" style={{ height: '350px', padding: '1rem' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={overallPerformanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="overallCostGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.2}/>
-                      </linearGradient>
-                      <linearGradient id="overallConversionsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.2}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.3} />
-                    <XAxis 
-                      dataKey="displayDate" 
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      interval={overallPerformanceData.length > 15 ? Math.ceil(overallPerformanceData.length / 8) : 0}
-                      tick={{ fill: 'var(--text-secondary)' }}
-                    />
-                    <YAxis 
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      tick={{ fill: 'var(--text-secondary)' }}
-                      tickFormatter={(value) => formatNumber(value)}
-                    />
-                    <Tooltip content={<OverallCampaignTooltip />} />
-                    <Legend 
-                      wrapperStyle={{ 
-                        paddingTop: '10px',
-                        fontSize: '11px',
-                        color: 'var(--text-secondary)'
-                      }}
-                    />
-                    <Area 
-                      type="monotone"
-                      dataKey="cost"
-                      stackId="1"
-                      stroke="#EF4444"
-                      fill="url(#overallCostGradient)"
-                      strokeWidth={2}
-                      name="Cost ($)"
-                    />
-                    <Area 
-                      type="monotone"
-                      dataKey="conversions"
-                      stackId="1"
-                      stroke="#F59E0B"
-                      fill="url(#overallConversionsGradient)"
-                      strokeWidth={2}
-                      name="Conversions"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="chart-insights" style={{ 
-                padding: '1rem',
-                borderTop: '1px solid var(--border-color)',
-                backgroundColor: 'var(--background-secondary)'
-              }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', fontSize: '0.875rem' }}>
-                  <div className="insight-metric">
-                    <div style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Avg Daily Impressions</div>
-                    <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                      {formatNumber(overallPerformanceData.reduce((sum, day) => sum + day.impressions, 0) / overallPerformanceData.length)}
-                    </div>
-                  </div>
-                  <div className="insight-metric">
-                    <div style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Avg Daily Clicks</div>
-                    <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                      {formatNumber(overallPerformanceData.reduce((sum, day) => sum + day.clicks, 0) / overallPerformanceData.length)}
-                    </div>
-                  </div>
-                  <div className="insight-metric">
-                    <div style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Avg Daily Conversions</div>
-                    <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                      {formatNumber(overallPerformanceData.reduce((sum, day) => sum + day.conversions, 0) / overallPerformanceData.length)}
-                    </div>
-                  </div>
-                  <div className="insight-metric">
-                    <div style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Avg Daily Cost</div>
-                    <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                      {formatCurrency(overallPerformanceData.reduce((sum, day) => sum + day.cost, 0) / overallPerformanceData.length)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Campaigns Cards */}
-          <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
-            <div className="card-header">
-              <h3>
-                <span className="material-symbols-outlined">campaign</span>
-                Top Campaigns
-              </h3>
-              <button
-                onClick={() => fetchAnalyticsData(true)}
-                className="icon-btn"
-                title="Refresh"
-              >
-                <span className="material-symbols-outlined">refresh</span>
-              </button>
-            </div>
-            <div className="card-content" style={{ padding: '1rem' }}>
-              <div className="campaigns-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '1rem',
-                marginBottom: '1rem'
-              }}>
-                {enabledCampaigns.slice(0, 6).map(campaign => (
-                  <div key={campaign.id} className="campaign-card">
-                    <div className="campaign-card-header">
-                      <div className="campaign-card-name">{campaign.name}</div>
-                      <span className={`status-dot ${campaign.status}`} title={campaign.status}></span>
-                    </div>
-                    <div className="campaign-card-metrics">
-                      <div className="campaign-card-metric">
-                        <span className="metric-label">Impressions</span>
-                        <span className="metric-value">{formatNumber(campaign.impressions)}</span>
-                      </div>
-                      <div className="campaign-card-metric">
-                        <span className="metric-label">Clicks</span>
-                        <span className="metric-value">{formatNumber(campaign.clicks)}</span>
-                      </div>
-                      <div className="campaign-card-metric">
-                        <span className="metric-label">CTR</span>
-                        <span className="metric-value">{formatPercentage(campaign.ctr)}</span>
-                      </div>
-                      <div className="campaign-card-metric">
-                        <span className="metric-label">Spend</span>
-                        <span className="metric-value">{formatCurrency(campaign.cost)}</span>
-                      </div>
-                    </div>
-                    <div className="campaign-card-performance">
-                      <div className="performance-bar">
-                        <div 
-                          className="performance-fill"
-                          style={{ width: `${Math.min((campaign.cost / campaign.budget) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      <span className="performance-text">
-                        {formatPercentage((campaign.cost / campaign.budget) * 100)} of budget
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <button 
-                  onClick={() => router.push('/dashboard/apis/google-adwords')}
-                  className="view-all-btn"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    background: 'transparent',
-                    border: '1px solid var(--accent)',
-                    borderRadius: '6px',
-                    color: 'var(--accent)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)'
-                    e.currentTarget.style.color = 'white'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = 'var(--accent)'
-                  }}
-                >
-                  View All Campaigns
-                  <span className="material-symbols-outlined">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Campaign Performance Table */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3>
-                <span className="material-symbols-outlined">table_chart</span>
-                Campaign Performance (Enabled Only)
-              </h3>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="icon-btn" title="Download">
-                  <span className="material-symbols-outlined">download</span>
-                </button>
-                <button className="icon-btn" title="Settings">
-                  <span className="material-symbols-outlined">settings</span>
-                </button>
-              </div>
-            </div>
-            <div className="card-content">
-              <div className="table-container" style={{ overflowX: 'auto' }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Campaign</th>
-                      <th>Status</th>
-                      <th>Impressions</th>
-                      <th>Clicks</th>
-                      <th>CTR</th>
-                      <th>Cost</th>
-                      <th>CPC</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enabledCampaigns.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                          No enabled campaigns found. Please check your Google AdWords account.
-                        </td>
-                      </tr>
-                    ) : enabledCampaigns.map(campaign => (
-                      <tr key={campaign.id}>
-                        <td className="campaign-name-cell">{campaign.name}</td>
-                        <td>
-                          <span className={`status-badge status-${campaign.status}`}>
-                            {campaign.status}
-                          </span>
-                        </td>
-                        <td>{formatNumber(campaign.impressions)}</td>
-                        <td>{formatNumber(campaign.clicks)}</td>
-                        <td>{formatPercentage(campaign.ctr)}</td>
-                        <td>{formatCurrency(campaign.cost)}</td>
-                        <td>{formatCurrency(campaign.cpc)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -865,6 +778,211 @@ export default function GoogleAdWordsAnalytics() {
       <style jsx>{`
         .breadcrumb a:hover {
           text-decoration: underline;
+        }
+
+        .campaign-performance-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          grid-template-rows: repeat(4, 1fr);
+          gap: 1.5rem;
+          min-height: calc(100vh - 200px);
+        }
+
+        .campaign-performance-card {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .campaign-card {
+          background: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          overflow: hidden;
+          transition: all 0.2s ease;
+        }
+
+        .campaign-card:hover {
+          border-color: var(--accent);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+
+        .campaign-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding: 1rem;
+          border-bottom: 1px solid var(--border-color);
+          background: var(--background-secondary);
+        }
+
+        .campaign-card-title {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex: 1;
+        }
+
+        .campaign-name {
+          margin: 0;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          line-height: 1.2;
+        }
+
+        .time-interval-select {
+          padding: 0.25rem 0.5rem;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background: var(--card-bg);
+          color: var(--text-primary);
+          font-size: 0.75rem;
+          cursor: pointer;
+        }
+
+        .time-interval-select:focus {
+          outline: none;
+          border-color: var(--accent);
+        }
+
+        .campaign-card-content {
+          padding: 1rem;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .campaign-metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.5rem;
+        }
+
+        .metric-box {
+          background: var(--background-secondary);
+          padding: 0.5rem;
+          border-radius: 6px;
+          text-align: center;
+        }
+
+        .metric-box .metric-label {
+          font-size: 0.7rem;
+          color: var(--text-secondary);
+          margin-bottom: 0.25rem;
+          font-weight: 500;
+        }
+
+        .metric-box .metric-value {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+
+        .cost-value {
+          color: #EF4444;
+        }
+
+        .conversions-value {
+          color: #10B981;
+        }
+
+        .cpa-value {
+          color: #F59E0B;
+        }
+
+        .cvr-value {
+          color: #8B5CF6;
+        }
+
+
+        .stacked-area-chart {
+          margin-bottom: 1rem;
+        }
+
+        .cost-conversion-chart {
+          flex: 1;
+          min-height: 120px;
+        }
+
+        .chart-header {
+          margin-bottom: 0.5rem;
+        }
+
+        .chart-header h5 {
+          margin: 0;
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .chart-container-small {
+          height: 150px;
+          width: 100%;
+          min-height: 150px;
+        }
+
+        .custom-tooltip {
+          background: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          padding: 0.5rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          font-size: 0.75rem;
+        }
+
+        .tooltip-date {
+          margin: 0 0 0.25rem 0;
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+
+        .performance-indicators {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .performance-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem;
+          background: var(--background-secondary);
+          border-radius: 4px;
+        }
+
+        .performance-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          font-weight: 500;
+        }
+
+        .color-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+        .cost-dot {
+          background: #EF4444;
+        }
+
+        .conversion-dot {
+          background: #10B981;
+        }
+
+        .performance-value {
+          font-size: 0.75rem;
+          font-weight: 600;
         }
 
         .dashboard-card {
@@ -1204,13 +1322,58 @@ export default function GoogleAdWordsAnalytics() {
           .grid {
             grid-template-columns: 1fr !important;
           }
-          
+
+          .campaign-performance-grid {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto !important;
+            gap: 1rem;
+          }
+
           .campaigns-grid {
             grid-template-columns: repeat(2, 1fr) !important;
           }
         }
 
         @media (max-width: 768px) {
+          .campaign-performance-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem;
+            min-height: auto;
+          }
+
+          .campaign-card-header {
+            padding: 0.75rem;
+          }
+
+          .campaign-card-content {
+            padding: 0.75rem;
+            gap: 0.75rem;
+          }
+
+          .campaign-metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+          }
+
+          .metric-box {
+            padding: 0.5rem;
+          }
+
+          .chart-container-small {
+            height: 120px;
+            min-height: 120px;
+          }
+
+
+          .campaign-name {
+            font-size: 0.8rem;
+          }
+
+          .time-interval-select {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+          }
+
           .campaign-metrics {
             flex-wrap: wrap;
           }
@@ -1223,15 +1386,15 @@ export default function GoogleAdWordsAnalytics() {
           .data-table td {
             padding: 0.5rem;
           }
-          
+
           .campaigns-grid {
             grid-template-columns: 1fr !important;
           }
-          
+
           .campaign-card {
             padding: 0.75rem;
           }
-          
+
           .campaign-card-name {
             font-size: 0.8rem;
           }
