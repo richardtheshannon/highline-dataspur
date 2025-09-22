@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 // GET /api/timeline/overdue - Get overdue timeline events
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
     // Get current date/time
     const now = new Date()
     
     console.log('Fetching overdue timeline events before:', now)
 
-    // Fetch timeline events that are in the past
+    // Fetch timeline events that are in the past (user-scoped)
     // Exclude events from completed projects
     const overdueEvents = await prisma.timelineEvent.findMany({
       where: {
@@ -19,6 +39,7 @@ export async function GET(request: NextRequest) {
           lt: now
         },
         project: {
+          ownerId: user.id,
           status: {
             notIn: ['COMPLETED', 'CANCELLED']
           }
@@ -31,14 +52,7 @@ export async function GET(request: NextRequest) {
             name: true,
             status: true,
             priority: true,
-            projectType: true,
-            owner: {
-              select: { 
-                id: true, 
-                name: true, 
-                email: true 
-              }
-            }
+            projectType: true
           }
         }
       },

@@ -6,6 +6,7 @@ import { useProjects } from '@/hooks/useProjects'
 import MarkdownUploader from '@/components/forms/MarkdownUploader'
 import TimelineGenerator from '@/components/timeline/TimelineGenerator'
 import TimelinePreview from '@/components/timeline/TimelinePreview'
+import ManualTimelineEventDrawer from '@/components/timeline/ManualTimelineEventDrawer'
 import { MarkdownParseResult, TimelineEvent } from '@/lib/markdownParser'
 
 export default function EditProjectPage() {
@@ -35,6 +36,9 @@ export default function EditProjectPage() {
   const [markdownResult, setMarkdownResult] = useState<MarkdownParseResult | null>(null)
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
   const [timelineError, setTimelineError] = useState<string | null>(null)
+
+  // Manual timeline event drawer state
+  const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false)
 
   // Load project data when component mounts
   useEffect(() => {
@@ -97,6 +101,12 @@ export default function EditProjectPage() {
     setTimelineEvents(events)
   }
 
+  const handleManualEventCreated = () => {
+    // Refresh the project data to include the new timeline event
+    // This will trigger the useEffect that loads project data
+    window.location.reload()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -156,23 +166,32 @@ export default function EditProjectPage() {
   }
 
   return (
-    <div className="safe-margin">
-      <div className="create-project-container">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handleCancel}
-              className="action-btn action-btn-view"
-            >
-              <span className="material-symbols-outlined">arrow_back</span>
-            </button>
-            <div>
-              <h1 className="create-project-title">Edit Project</h1>
-              <p className="create-project-subtitle">Update project &quot;{project.name}&quot;</p>
-            </div>
+    <div className="safe-margin projects-page">
+      {/* Header with Work Item Button - Full width */}
+      <div className="projects-header">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCancel}
+            className="action-btn action-btn-view"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <h1 className="create-project-title">Edit Project</h1>
+            <p className="create-project-subtitle">Update project &quot;{project.name}&quot;</p>
           </div>
         </div>
+        <button
+          onClick={() => setIsManualDrawerOpen(true)}
+          className="form-btn form-btn-primary flex items-center gap-2"
+          type="button"
+        >
+          <span className="material-symbols-outlined">add</span>
+          Work Item
+        </button>
+      </div>
+
+      <div className="create-project-container">
 
         {error && (
           <div className="create-project-error">
@@ -418,6 +437,14 @@ export default function EditProjectPage() {
           </div>
         </form>
       </div>
+
+      {/* Manual Timeline Event Drawer - Portal will render this at document.body */}
+      <ManualTimelineEventDrawer
+        isOpen={isManualDrawerOpen}
+        onClose={() => setIsManualDrawerOpen(false)}
+        onEventCreated={handleManualEventCreated}
+        projectId={projectId}
+      />
     </div>
   )
 }

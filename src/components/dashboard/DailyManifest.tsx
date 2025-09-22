@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
 import { dailyManifestDoc } from '@/data/helpDocumentation'
+import { fetchGeneralTasks, getTasksForToday, taskToTimelineEvent } from '@/lib/generalTasks'
 
 interface TimelineEvent {
   id: string
@@ -36,8 +37,19 @@ export default function DailyManifest() {
       if (!response.ok) {
         throw new Error('Failed to fetch timeline events')
       }
-      const data = await response.json()
-      setEvents(data)
+      const timelineData = await response.json()
+
+      // Load general tasks for today
+      const generalTasks = await fetchGeneralTasks()
+      const todayTasks = getTasksForToday(generalTasks)
+      const generalTaskEvents = todayTasks.map(task => taskToTimelineEvent(task))
+
+      // Combine and sort by time
+      const allEvents = [...timelineData, ...generalTaskEvents].sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
+
+      setEvents(allEvents)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -135,12 +147,9 @@ export default function DailyManifest() {
           </div>
         ) : (
           <div className="manifest-events">
-            {events.map((event) => (
-              <Link 
-                key={event.id}
-                href={`/dashboard/projects/${event.project.id}`}
-                className="manifest-event-link"
-              >
+            {events.map((event) => {
+              const isGeneralTask = event.project.id === 'general-tasks'
+              const content = (
                 <div className="manifest-event">
                   <div className="event-time-column">
                     <span className="event-time">{formatTime(event.date)}</span>
@@ -177,8 +186,22 @@ export default function DailyManifest() {
                     <span className="material-symbols-outlined">chevron_right</span>
                   </div>
                 </div>
-              </Link>
-            ))}
+              )
+
+              return isGeneralTask ? (
+                <div key={event.id} className="manifest-event-link">
+                  {content}
+                </div>
+              ) : (
+                <Link
+                  key={event.id}
+                  href={`/dashboard/projects/${event.project.id}`}
+                  className="manifest-event-link"
+                >
+                  {content}
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>

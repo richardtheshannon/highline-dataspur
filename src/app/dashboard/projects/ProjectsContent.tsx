@@ -22,6 +22,17 @@ export interface Project {
   links: { name: string; url: string; type: 'repository' | 'documentation' | 'deployment' | 'other' }[]
 }
 
+export interface GeneralTask {
+  id: string
+  title: string
+  description?: string | null
+  completed: boolean
+  dueDate?: string | null
+  createdAt: string
+  updatedAt?: string
+  userId?: string
+}
+
 type SortField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progress'
 type SortDirection = 'asc' | 'desc'
 
@@ -29,13 +40,19 @@ export default function ProjectsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { projects: apiProjects, loading, error, deleteProject } = useProjects()
-  
+
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState<SortField>('startDate')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterPriority, setFilterPriority] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
+
+  // General Tasks State
+  const [generalTasks, setGeneralTasks] = useState<GeneralTask[]>([])
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskDueDate, setNewTaskDueDate] = useState('')
 
   // Map API projects to component projects
   const projects: Project[] = useMemo(() => {
@@ -100,12 +117,29 @@ export default function ProjectsContent() {
     return progressMap[status] || 0
   }
 
+  // Load general tasks from database
+  useEffect(() => {
+    fetchTasks()
+  }, [])
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch('/api/general-tasks')
+      if (response.ok) {
+        const tasks = await response.json()
+        setGeneralTasks(tasks)
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error)
+    }
+  }
+
   // Update filters from URL params
   useEffect(() => {
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
     const type = searchParams.get('type')
-    
+
     if (status) setFilterStatus(status)
     if (priority) setFilterPriority(priority)
     if (type) setFilterType(type)
@@ -192,6 +226,94 @@ export default function ProjectsContent() {
     }).format(amount)
   }
 
+  // General Tasks Functions
+  const addGeneralTask = async () => {
+    if (!newTaskTitle.trim()) return
+
+    try {
+      const response = await fetch('/api/general-tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newTaskTitle.trim(),
+          dueDate: newTaskDueDate || null
+        })
+      })
+
+      if (response.ok) {
+        const newTask = await response.json()
+        setGeneralTasks([...generalTasks, newTask])
+        setNewTaskTitle('')
+        setNewTaskDueDate('')
+        setShowAddTask(false)
+      } else {
+        console.error('Failed to create task')
+      }
+    } catch (error) {
+      console.error('Error creating task:', error)
+    }
+  }
+
+  const toggleTaskCompletion = async (taskId: string) => {
+    const task = generalTasks.find(t => t.id === taskId)
+    if (!task) return
+
+    try {
+      const response = await fetch(`/api/general-tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completed: !task.completed
+        })
+      })
+
+      if (response.ok) {
+        const updatedTask = await response.json()
+        setGeneralTasks(generalTasks.map(t =>
+          t.id === taskId ? updatedTask : t
+        ))
+      } else {
+        console.error('Failed to update task')
+      }
+    } catch (error) {
+      console.error('Error updating task:', error)
+    }
+  }
+
+  const deleteGeneralTask = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/general-tasks/${taskId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setGeneralTasks(generalTasks.filter(task => task.id !== taskId))
+      } else {
+        console.error('Failed to delete task')
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error)
+    }
+  }
+
+  const getTaskDueStatus = (dueDate?: string | null) => {
+    if (!dueDate) return { text: '', color: 'var(--text-muted)' }
+
+    const today = new Date()
+    const due = new Date(dueDate)
+    const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) return { text: 'Overdue', color: '#ef4444' }
+    if (diffDays === 0) return { text: 'Due Today', color: '#f59e0b' }
+    if (diffDays === 1) return { text: 'Due Tomorrow', color: '#f59e0b' }
+    if (diffDays <= 7) return { text: 'Due This Week', color: 'var(--text-muted)' }
+    return { text: `Due ${due.toLocaleDateString()}`, color: 'var(--text-muted)' }
+  }
+
   const getStatusBadge = (status: Project['status']) => {
     const statusStyles = {
       active: 'bg-blue-100 text-blue-800',
@@ -236,7 +358,7 @@ export default function ProjectsContent() {
           <h1 className="create-project-title">Projects</h1>
           <p className="create-project-subtitle">Manage and track all your projects</p>
         </div>
-        <button 
+        <button
           onClick={() => router.push('/dashboard/projects/new')}
           className="form-btn form-btn-primary flex items-center gap-2"
         >
@@ -244,8 +366,150 @@ export default function ProjectsContent() {
           New Project
         </button>
       </div>
-      
-      <div className="create-project-container">
+
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'start' }}>
+        {/* Left Column - 1/3 */}
+        <div className="main-content-left">
+          {/* General Task List */}
+          <div className="form-section">
+            <h3 className="form-section-title">
+              <span className="material-symbols-outlined">checklist</span>
+              General Tasks
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {generalTasks.map(task => {
+                const dueStatus = getTaskDueStatus(task.dueDate)
+                return (
+                  <div key={task.id} className="stats-card" style={{ display: 'flex', alignItems: 'flex-start', textAlign: 'left', padding: '0.75rem', position: 'relative' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginRight: '0.75rem', marginTop: '0.125rem', accentColor: 'var(--accent)' }}
+                      checked={task.completed}
+                      onChange={() => toggleTaskCompletion(task.id)}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: '0.875rem',
+                        color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)',
+                        textDecoration: task.completed ? 'line-through' : 'none',
+                        marginBottom: '0.25rem'
+                      }}>
+                        {task.title}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: task.completed ? '#10b981' : dueStatus.color }}>
+                        {task.completed ? 'Completed' : dueStatus.text}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteGeneralTask(task.id)}
+                      style={{
+                        position: 'absolute',
+                        top: '0.5rem',
+                        right: '0.5rem',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '0.25rem',
+                        borderRadius: '0.25rem',
+                        opacity: '0.7'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '1'
+                        e.currentTarget.style.color = '#ef4444'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '0.7'
+                        e.currentTarget.style.color = 'var(--text-muted)'
+                      }}
+                      title="Delete task"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
+                    </button>
+                  </div>
+                )
+              })}
+
+              {generalTasks.length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', padding: '2rem 1rem' }}>
+                  No tasks yet. Add your first task below!
+                </div>
+              )}
+            </div>
+
+            {/* Add Task Form */}
+            {showAddTask ? (
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
+                <input
+                  type="text"
+                  placeholder="Task title..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="form-input"
+                  style={{ marginBottom: '0.75rem' }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') addGeneralTask()
+                    if (e.key === 'Escape') setShowAddTask(false)
+                  }}
+                  autoFocus
+                />
+                <input
+                  type="date"
+                  value={newTaskDueDate}
+                  onChange={(e) => setNewTaskDueDate(e.target.value)}
+                  className="form-input"
+                  style={{ marginBottom: '0.75rem' }}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={addGeneralTask}
+                    className="form-btn form-btn-primary"
+                    style={{ flex: 1 }}
+                    disabled={!newTaskTitle.trim()}
+                  >
+                    Add Task
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddTask(false)
+                      setNewTaskTitle('')
+                      setNewTaskDueDate('')
+                    }}
+                    className="form-btn"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAddTask(true)}
+                className="form-btn"
+                style={{
+                  width: '100%',
+                  marginTop: '1rem',
+                  background: 'var(--bg-secondary)',
+                  border: '1px dashed var(--border-color)',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add</span>
+                Add Task
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - 2/3 */}
+        <div className="main-content-right">
+          <div className="create-project-container">
 
         {/* Statistics Cards */}
         <div className="form-section">
@@ -500,6 +764,8 @@ export default function ProjectsContent() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
           </div>
         </div>
       </div>

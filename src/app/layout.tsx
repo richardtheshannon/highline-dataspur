@@ -28,10 +28,17 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  const savedTheme = localStorage.getItem('theme');
+                  const savedTheme = localStorage.getItem('theme') || 'system';
                   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-                  document.documentElement.setAttribute('data-theme', theme);
+
+                  let resolvedTheme;
+                  if (savedTheme === 'system') {
+                    resolvedTheme = prefersDark ? 'dark' : 'light';
+                  } else {
+                    resolvedTheme = savedTheme;
+                  }
+
+                  document.documentElement.setAttribute('data-theme', resolvedTheme);
                 } catch (e) {
                   document.documentElement.setAttribute('data-theme', 'light');
                 }

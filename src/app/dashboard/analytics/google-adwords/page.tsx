@@ -241,21 +241,29 @@ const CampaignPerformanceCard: React.FC<CampaignPerformanceCardProps> = ({
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="campaign-metrics-grid">
-          <div className="metric-box">
+        {/* Key Metrics - Horizontal Row Layout */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+            width: '100%',
+            flexWrap: 'wrap'
+          }}
+        >
+          <div className="metric-box" style={{ flex: '1', minWidth: '0' }}>
             <div className="metric-label">Cost</div>
             <div className="metric-value cost-value">{formatCurrency(displayMetrics.cost)}</div>
           </div>
-          <div className="metric-box">
+          <div className="metric-box" style={{ flex: '1', minWidth: '0' }}>
             <div className="metric-label">Conversions</div>
             <div className="metric-value conversions-value">{formatNumber(displayMetrics.conversions)}</div>
           </div>
-          <div className="metric-box">
+          <div className="metric-box" style={{ flex: '1', minWidth: '0' }}>
             <div className="metric-label">CPA</div>
             <div className="metric-value cpa-value">{formatCurrency(displayMetrics.cpa)}</div>
           </div>
-          <div className="metric-box">
+          <div className="metric-box" style={{ flex: '1', minWidth: '0' }}>
             <div className="metric-label">CVR</div>
             <div className="metric-value cvr-value">{formatPercentage(displayMetrics.cvr)}</div>
           </div>
@@ -758,11 +766,10 @@ export default function GoogleAdWordsAnalytics() {
 
         </div>
 
-        {/* Right Column - Campaign Performance Grid */}
+        {/* Right Column - Top 2 Campaign Cards */}
         <div className="main-content-right">
-          {/* Campaign Performance Grid - 2x4 Layout */}
-          <div className="campaign-performance-grid">
-            {enabledCampaigns.slice(0, 8).map((campaign, index) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {enabledCampaigns.slice(0, 2).map((campaign, index) => (
               <CampaignPerformanceCard
                 key={campaign.id}
                 campaign={campaign}
@@ -857,9 +864,11 @@ export default function GoogleAdWordsAnalytics() {
         }
 
         .campaign-metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          display: grid !important;
+          grid-template-columns: repeat(4, 1fr) !important;
+          grid-template-rows: 1fr !important;
           gap: 0.5rem;
+          width: 100%;
         }
 
         .metric-box {
@@ -1332,6 +1341,11 @@ export default function GoogleAdWordsAnalytics() {
           .campaigns-grid {
             grid-template-columns: repeat(2, 1fr) !important;
           }
+
+          .campaign-metrics-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 0.375rem;
+          }
         }
 
         @media (max-width: 768px) {
@@ -1351,8 +1365,10 @@ export default function GoogleAdWordsAnalytics() {
           }
 
           .campaign-metrics-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            grid-template-rows: 1fr 1fr !important;
+            gap: 0.25rem;
           }
 
           .metric-box {

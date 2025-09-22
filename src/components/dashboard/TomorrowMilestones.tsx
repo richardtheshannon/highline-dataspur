@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
 import { tomorrowMilestonesDoc } from '@/data/helpDocumentation'
+import { fetchGeneralTasks, getTasksForTomorrow, taskToTimelineEvent } from '@/lib/generalTasks'
 
 interface TimelineEvent {
   id: string
@@ -37,14 +38,26 @@ export default function TomorrowMilestones() {
       if (!response.ok) {
         throw new Error('Failed to fetch timeline events')
       }
-      const data = await response.json()
+      const timelineData = await response.json()
+
       // Filter only milestone type events for tomorrow
-      const milestones = data.filter((event: TimelineEvent) => 
-        event.type.toLowerCase() === 'milestone' || 
+      const milestones = timelineData.filter((event: TimelineEvent) =>
+        event.type.toLowerCase() === 'milestone' ||
         event.type.toLowerCase() === 'deadline' ||
         event.type.toLowerCase() === 'release'
       )
-      setEvents(milestones)
+
+      // Load general tasks for tomorrow (all general tasks are treated as milestones)
+      const generalTasks = await fetchGeneralTasks()
+      const tomorrowTasks = getTasksForTomorrow(generalTasks)
+      const generalTaskEvents = tomorrowTasks.map(task => taskToTimelineEvent(task))
+
+      // Combine and sort by time
+      const allEvents = [...milestones, ...generalTaskEvents].sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
+
+      setEvents(allEvents)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -154,12 +167,9 @@ export default function TomorrowMilestones() {
             </div>
           ) : (
             <div className="milestones-list">
-              {events.map((event) => (
-                <Link 
-                  key={event.id}
-                  href={`/dashboard/projects/${event.project.id}`}
-                  className="milestone-link"
-                >
+              {events.map((event) => {
+                const isGeneralTask = event.project.id === 'general-tasks'
+                const content = (
                   <div className="milestone-item">
                     <div 
                       className="milestone-icon"
@@ -200,8 +210,22 @@ export default function TomorrowMilestones() {
                       <span className="material-symbols-outlined">arrow_forward</span>
                     </div>
                   </div>
-                </Link>
-              ))}
+                )
+
+                return isGeneralTask ? (
+                  <div key={event.id} className="milestone-link">
+                    {content}
+                  </div>
+                ) : (
+                  <Link
+                    key={event.id}
+                    href={`/dashboard/projects/${event.project.id}`}
+                    className="milestone-link"
+                  >
+                    {content}
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>

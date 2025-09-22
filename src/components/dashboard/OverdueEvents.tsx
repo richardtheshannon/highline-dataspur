@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
 import { overdueEventsDoc } from '@/data/helpDocumentation'
+import { fetchGeneralTasks, getOverdueTasks, taskToTimelineEvent } from '@/lib/generalTasks'
 
 interface OverdueEvent {
   id: string
@@ -40,8 +41,19 @@ export default function OverdueEvents() {
       if (!response.ok) {
         throw new Error('Failed to fetch overdue events')
       }
-      const data = await response.json()
-      setEvents(data)
+      const timelineData = await response.json()
+
+      // Load overdue general tasks
+      const generalTasks = await fetchGeneralTasks()
+      const overdueTasks = getOverdueTasks(generalTasks)
+      const generalTaskEvents = overdueTasks.map(task => taskToTimelineEvent(task, true))
+
+      // Combine and sort by days overdue (most overdue first)
+      const allEvents = [...timelineData, ...generalTaskEvents].sort((a, b) => {
+        return (b.daysOverdue || 0) - (a.daysOverdue || 0)
+      })
+
+      setEvents(allEvents)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -154,14 +166,10 @@ export default function OverdueEvents() {
                 {displayEvents.map((event) => {
                   const intensityClass = getOverdueIntensity(event.daysOverdue)
                   const urgencyColor = getPriorityUrgencyColor(event.project.priority, event.daysOverdue)
-                  
-                  return (
-                    <Link 
-                      key={event.id}
-                      href={`/dashboard/projects/${event.project.id}`}
-                      className="overdue-link"
-                    >
-                      <div className={`overdue-item ${intensityClass}`}>
+                  const isGeneralTask = event.project.id === 'general-tasks'
+
+                  const content = (
+                    <div className={`overdue-item ${intensityClass}`}>
                         <div 
                           className="overdue-icon"
                           style={{ 
@@ -204,6 +212,19 @@ export default function OverdueEvents() {
                           <span className="material-symbols-outlined">chevron_right</span>
                         </div>
                       </div>
+                  )
+
+                  return isGeneralTask ? (
+                    <div key={event.id} className="overdue-link">
+                      {content}
+                    </div>
+                  ) : (
+                    <Link
+                      key={event.id}
+                      href={`/dashboard/projects/${event.project.id}`}
+                      className="overdue-link"
+                    >
+                      {content}
                     </Link>
                   )
                 })}
