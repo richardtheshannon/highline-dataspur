@@ -145,10 +145,21 @@ export const getTasksForToday = (tasks: GeneralTask[]) => {
   return tasks.filter(task => {
     if (!task.dueDate || task.completed) return false
 
-    const dueDate = new Date(task.dueDate)
-    const dueDateString = dueDate.getFullYear() + '-' +
-      String(dueDate.getMonth() + 1).padStart(2, '0') + '-' +
-      String(dueDate.getDate()).padStart(2, '0')
+    // Extract date part from the dueDate string to avoid timezone issues
+    let dueDateString: string
+    if (typeof task.dueDate === 'string') {
+      // If it's a UTC datetime string like "2025-09-22T00:00:00.000Z"
+      if (task.dueDate.includes('T')) {
+        dueDateString = task.dueDate.split('T')[0] // Just take the date part (YYYY-MM-DD)
+      } else {
+        dueDateString = task.dueDate // Already in YYYY-MM-DD format
+      }
+    } else {
+      // If it's a Date object, extract the UTC date to avoid timezone conversion
+      const date = new Date(task.dueDate)
+      dueDateString = date.toISOString().split('T')[0]
+    }
+
 
     return dueDateString === todayDateString
   })
@@ -165,10 +176,20 @@ export const getTasksForTomorrow = (tasks: GeneralTask[]) => {
   return tasks.filter(task => {
     if (!task.dueDate || task.completed) return false
 
-    const dueDate = new Date(task.dueDate)
-    const dueDateString = dueDate.getFullYear() + '-' +
-      String(dueDate.getMonth() + 1).padStart(2, '0') + '-' +
-      String(dueDate.getDate()).padStart(2, '0')
+    // Extract date part from the dueDate string to avoid timezone issues
+    let dueDateString: string
+    if (typeof task.dueDate === 'string') {
+      // If it's a UTC datetime string like "2025-09-22T00:00:00.000Z"
+      if (task.dueDate.includes('T')) {
+        dueDateString = task.dueDate.split('T')[0] // Just take the date part (YYYY-MM-DD)
+      } else {
+        dueDateString = task.dueDate // Already in YYYY-MM-DD format
+      }
+    } else {
+      // If it's a Date object, extract the UTC date to avoid timezone conversion
+      const date = new Date(task.dueDate)
+      dueDateString = date.toISOString().split('T')[0]
+    }
 
     return dueDateString === tomorrowDateString
   })
@@ -184,14 +205,31 @@ export const getOverdueTasks = (tasks: GeneralTask[]) => {
   return tasks.filter(task => {
     if (!task.dueDate || task.completed) return false
 
-    const dueDate = new Date(task.dueDate)
-    const dueDateString = dueDate.getFullYear() + '-' +
-      String(dueDate.getMonth() + 1).padStart(2, '0') + '-' +
-      String(dueDate.getDate()).padStart(2, '0')
+    // Extract date part from the dueDate string to avoid timezone issues
+    let dueDateString: string
+    if (typeof task.dueDate === 'string') {
+      // If it's a UTC datetime string like "2025-09-22T00:00:00.000Z"
+      if (task.dueDate.includes('T')) {
+        dueDateString = task.dueDate.split('T')[0] // Just take the date part (YYYY-MM-DD)
+      } else {
+        dueDateString = task.dueDate // Already in YYYY-MM-DD format
+      }
+    } else {
+      // If it's a Date object, extract the UTC date to avoid timezone conversion
+      const date = new Date(task.dueDate)
+      dueDateString = date.toISOString().split('T')[0]
+    }
 
     return dueDateString < todayDateString
   }).map(task => {
-    const dueDate = new Date(task.dueDate!)
+    // Handle both string and Date formats for calculations
+    let dueDate: Date
+    if (typeof task.dueDate === 'string') {
+      dueDate = new Date(task.dueDate + 'T00:00:00')
+    } else {
+      dueDate = new Date(task.dueDate!)
+    }
+
     const today = new Date()
     const diffTime = today.getTime() - dueDate.getTime()
     const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24))

@@ -130,8 +130,8 @@ export default function TomorrowMilestones() {
         <span className="material-symbols-outlined" style={{ color: '#ffd43b' }}>
           upcoming
         </span>
-        <DocumentedTitle 
-          title="Tomorrow's Milestones"
+        <DocumentedTitle
+          title="Tomorrow's Manifest"
           documentation={tomorrowMilestonesDoc}
           as="h3"
         />

@@ -100,14 +100,22 @@ export default function Footer() {
         </div>
         <div className="drawer-content">
           <div className="drawer-grid">
-            <button className="drawer-action">
+            <a
+              href="https://highline-dataspur-production.up.railway.app/dashboard/projects/new"
+              className="drawer-action"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <span className="material-symbols-outlined">add_circle</span>
               <span>New Project</span>
-            </button>
-            <button className="drawer-action">
+            </a>
+            <a
+              href="/dashboard/general-tasks/new"
+              className="drawer-action"
+            >
               <span className="material-symbols-outlined">task_alt</span>
               <span>New Task</span>
-            </button>
+            </a>
             <button className="drawer-action">
               <span className="material-symbols-outlined">note_add</span>
               <span>New Note</span>
