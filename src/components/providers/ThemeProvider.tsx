@@ -25,41 +25,37 @@ interface ThemeProviderProps {
 }
 
 export default function ThemeProvider({ children }: ThemeProviderProps) {
-  // Initialize theme from localStorage and current DOM state
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('theme') as Theme) || 'system'
-    }
-    return 'system'
-  })
-  
-  // Initialize actualTheme from the current data-theme attribute
-  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const currentTheme = document.documentElement.getAttribute('data-theme')
-      return (currentTheme as 'light' | 'dark') || 'light'
-    }
-    return 'light'
-  })
+  // Initialize with default values to match server-side rendering
+  const [theme, setThemeState] = useState<Theme>('system')
+  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // Only run on client-side after mounting
+    setMounted(true)
+
     // Get initial theme from localStorage or default to system
-    const savedTheme = localStorage.getItem('theme') as Theme
-    if (savedTheme) {
-      setThemeState(savedTheme)
-    }
+    const savedTheme = (localStorage.getItem('theme') as Theme) || 'system'
+    setThemeState(savedTheme)
+
+    // Get initial actualTheme from DOM (set by the script in layout.tsx)
+    const currentTheme = document.documentElement.getAttribute('data-theme')
+    setActualTheme((currentTheme as 'light' | 'dark') || 'light')
   }, [])
 
   useEffect(() => {
+    // Only update theme after component is mounted to avoid hydration mismatches
+    if (!mounted) return
+
     const updateTheme = () => {
       let resolvedTheme: 'light' | 'dark'
-      
+
       if (theme === 'system') {
         resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       } else {
         resolvedTheme = theme
       }
-      
+
       setActualTheme(resolvedTheme)
       document.documentElement.setAttribute('data-theme', resolvedTheme)
       localStorage.setItem('theme', theme)
@@ -77,7 +73,7 @@ export default function ThemeProvider({ children }: ThemeProviderProps) {
 
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme])
+  }, [theme, mounted])
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme)

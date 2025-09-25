@@ -155,6 +155,8 @@ src/
 ### 4. Analytics Dashboard
 - **Google Ads**: Horizontal metrics layout, simplified 2-card design
 - **Performance charts**: StackedAreaChart with cost vs conversions
+- **Platform Performance**: Individual campaign visualization with separate lines for each campaign
+- **Campaign-Level Insights**: Real-time conversion tracking per campaign with dynamic color coding
 - **Time controls**: 3d, 7d, 14d, 30d, 60d, 90d, 1y intervals
 - **Data freshness indicators**: Color-coded cache status
 - **Manual refresh**: Instant refresh with loading states
@@ -196,6 +198,15 @@ src/
 - `GET /api/apis/google-adwords/activities` - API activity log
 
 ## Recent Critical Updates
+
+### 🚀 Platform Performance Analytics Enhancement (2025-09-24) ✅
+- **Individual Campaign Lines**: Platform Performance Analytics chart now displays separate lines for each Google Ads campaign
+- **Campaign-Specific Colors**: Each campaign gets its own color scheme for easy visual differentiation
+- **Enhanced Data Visualization**: Chart shows both platform totals AND individual campaign performance
+- **Real Campaign Data**: "Call Lead Focus- JH" and "Website traffic-Performance Max-6" campaigns now have dedicated visualization
+- **Dynamic Color Generation**: Intelligent color assignment based on campaign names and characteristics
+- **Improved Chart Subtitle**: Now reflects multiple metrics being displayed from connected platforms
+- **API Enhancement**: Platform metrics API updated to include campaign-level aggregation alongside platform totals
 
 ### 🚀 General Tasks Dashboard Integration (2025-09-22) ✅
 - **Timezone Fix**: Resolved UTC date parsing issues causing day-shift errors
