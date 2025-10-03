@@ -3,6 +3,7 @@ import { TimelineEventStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 // Map frontend status values to database enum values
+// Fixed: Updated Prisma relation names to match schema (User, TimelineEvent, Project)
 function mapStatusToDb(status: string): TimelineEventStatus {
   switch (status.toLowerCase()) {
     case 'pending': return TimelineEventStatus.PENDING
