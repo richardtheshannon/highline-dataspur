@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         apiConfigId: config.id
       },
       include: {
-        metrics: {
+        GoogleAdsMetrics: {
           orderBy: {
             date: 'desc'
           },
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     // Format cached campaigns with latest metrics
     const formattedCampaigns = cachedCampaigns.map(campaign => {
-      const latestMetrics = campaign.metrics[0]
+      const latestMetrics = campaign.GoogleAdsMetrics[0]
 
       return {
         id: campaign.campaignId,

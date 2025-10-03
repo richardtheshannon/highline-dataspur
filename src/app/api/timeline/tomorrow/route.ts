@@ -45,12 +45,12 @@ export async function GET(request: NextRequest) {
           gte: startOfDay,
           lte: endOfDay
         },
-        project: {
+        Project: {
           ownerId: user.id
         }
       },
       include: {
-        project: {
+        Project: {
           select: {
             id: true,
             name: true,
@@ -64,8 +64,17 @@ export async function GET(request: NextRequest) {
     })
 
     console.log(`Found ${tomorrowEvents.length} timeline events for tomorrow`)
-    
-    return NextResponse.json(tomorrowEvents)
+
+    // Map Project relation to project for frontend compatibility
+    const mappedEvents = tomorrowEvents.map(event => {
+      const { Project, ...eventData } = event
+      return {
+        ...eventData,
+        project: Project
+      }
+    })
+
+    return NextResponse.json(mappedEvents)
   } catch (error) {
     console.error('Timeline tomorrow GET error:', error)
     return NextResponse.json(

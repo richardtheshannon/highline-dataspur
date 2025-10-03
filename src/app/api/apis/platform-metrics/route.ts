@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
-        apiConfigurations: {
+        ApiConfiguration: {
           where: {
             status: 'ACTIVE'
           }
@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('Found user:', user.id, 'with', user.apiConfigurations.length, 'active API configurations')
-    console.log('API configurations:', user.apiConfigurations.map(c => ({ provider: c.provider, status: c.status })))
+    console.log('Found user:', user.id, 'with', user.ApiConfiguration.length, 'active API configurations')
+    console.log('API configurations:', user.ApiConfiguration.map(c => ({ provider: c.provider, status: c.status })))
 
     // Generate monthly metrics for connected APIs
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const chartData: Array<{ name: string; [key: string]: any }> = months.map((month) => ({ name: month }))
 
     // Process each connected API configuration
-    for (const config of user.apiConfigurations) {
+    for (const config of user.ApiConfiguration) {
       if (config.provider === 'GOOGLE_ADWORDS') {
         try {
           // Fetch real Google AdWords metrics with proper authentication
@@ -146,34 +146,21 @@ export async function GET(request: NextRequest) {
             }
           } else {
             console.error('Google AdWords metrics API failed:', metricsResponse.status, await metricsResponse.text())
+            // No fallback data - API must work to show data
           }
         } catch (error) {
           console.error('Error fetching Google AdWords metrics:', error)
-          // Generate fallback data
-          chartData.forEach((dataPoint, index) => {
-            const baseValue = 50 + Math.random() * 150
-            const seasonalMultiplier = index >= 9 ? 1.3 : 1
-            dataPoint['Google AdWords'] = Math.round(baseValue * seasonalMultiplier)
-          })
+          // No fallback data - connection must work to show data
         }
       } else if (config.provider === 'FACEBOOK_ADS') {
-        // Generate sample data for Facebook Ads
-        chartData.forEach((dataPoint, index) => {
-          const baseValue = 30 + Math.random() * 100
-          dataPoint['Facebook Ads'] = Math.round(baseValue)
-        })
+        // TODO: Implement real Facebook Ads API integration
+        console.log('Facebook Ads API not yet implemented')
       } else if (config.provider === 'TWITTER_ADS') {
-        // Generate sample data for Twitter Ads
-        chartData.forEach((dataPoint, index) => {
-          const baseValue = 20 + Math.random() * 80
-          dataPoint['Twitter Ads'] = Math.round(baseValue)
-        })
+        // TODO: Implement real Twitter Ads API integration
+        console.log('Twitter Ads API not yet implemented')
       } else if (config.provider === 'LINKEDIN_ADS') {
-        // Generate sample data for LinkedIn Ads
-        chartData.forEach((dataPoint, index) => {
-          const baseValue = 25 + Math.random() * 90
-          dataPoint['LinkedIn Ads'] = Math.round(baseValue)
-        })
+        // TODO: Implement real LinkedIn Ads API integration
+        console.log('LinkedIn Ads API not yet implemented')
       }
     }
 
@@ -182,7 +169,7 @@ export async function GET(request: NextRequest) {
       topPerformer: null as string | null,
       topValue: 0,
       growthTrend: 'positive' as 'positive' | 'negative' | 'neutral',
-      totalPlatforms: user.apiConfigurations.length
+      totalPlatforms: user.ApiConfiguration.length
     }
 
     // Find top performer from last month's data
@@ -215,7 +202,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       chartData,
       insights,
-      connectedPlatforms: user.apiConfigurations.map(c => ({
+      connectedPlatforms: user.ApiConfiguration.map(c => ({
         provider: c.provider,
         name: c.name,
         status: c.status

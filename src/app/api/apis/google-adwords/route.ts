@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, ApiProvider, ApiConfigStatus } from '@prisma/client'
+import { ApiProvider, ApiConfigStatus } from '@prisma/client'
 import { getSession } from '@/lib/auth'
 import { encryptString, decryptString } from '@/lib/encryption'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // GET /api/apis/google-adwords - Get Google AdWords configuration
 export async function GET(request: NextRequest) {
@@ -96,6 +95,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       },
       create: {
+        id: crypto.randomUUID(),
         userId,
         provider: ApiProvider.GOOGLE_ADWORDS,
         name,
@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
         developerToken: encryptedData.developerToken,
         refreshToken: encryptedData.refreshToken,
         apiKey: encryptedData.apiKey,
-        status: ApiConfigStatus.INACTIVE
+        status: ApiConfigStatus.INACTIVE,
+        updatedAt: new Date()
       }
     })
     

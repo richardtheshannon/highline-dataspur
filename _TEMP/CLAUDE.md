@@ -1,11 +1,13 @@
 # CLAUDE.md - DataSpur Development Guide
 
 ## Project Overview
-**DataSpur** - Full-stack Next.js 14 project management application with PostgreSQL, authentication, and Google Ads API integration.
+**DataSpur** - Full-stack Next.js 14 project management application with PostgreSQL, authentication, Google Ads API integration, and comprehensive reporting system.
 
 - **Stack**: Next.js 14.2.22, TypeScript 5.9.2, Prisma ORM 5.7.0, PostgreSQL
 - **Auth**: NextAuth.js 4.24.5 (Google & GitHub OAuth)
 - **Styling**: Tailwind CSS 3.4.17, Radix UI
+- **Rich Text**: TipTap editor with auto-save and conflict protection
+- **UI Components**: MUI Tree View, custom skeleton loading, accordion animations
 - **Deployment**: Railway platform
 - **Database**: PostgreSQL (local: `hla-dataspur`, production: Railway)
 
@@ -25,11 +27,13 @@ npm run type-check          # TypeScript check
 ### Key Database Models
 ```prisma
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  projects      Project[]
-  generalTasks  GeneralTask[]
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  projects         Project[]
+  generalTasks     GeneralTask[]
+  reportCategories ReportCategory[]
+  reports          Report[]
 }
 
 model Project {
@@ -96,6 +100,49 @@ model GoogleAdsMetrics {
   ctr             Float
   cpc             Float
 }
+
+model ReportCategory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  parentId    String?
+  parent      ReportCategory? @relation("CategoryTree", fields: [parentId], references: [id])
+  children    ReportCategory[] @relation("CategoryTree")
+  level       Int      @default(0) // 0-3 for max depth of 4
+  reports     Report[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  description String?
+  content     String   @db.Text // Stored as HTML
+  categoryId  String
+  category    ReportCategory @relation(fields: [categoryId], references: [id])
+  author      String?
+  isPublic    Boolean  @default(true) // For sharing via link
+  sections    ReportSection[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ReportSection {
+  id          String   @id @default(cuid())
+  reportId    String
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  heading     String
+  content     String   @db.Text // HTML content for this section
+  order       Int
+  isComplete  Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 ```
 
 ### File Structure
@@ -107,16 +154,37 @@ src/
 │   │   ├── projects/              # Projects CRUD API
 │   │   ├── timeline/              # Timeline events API
 │   │   ├── general-tasks/         # General tasks API
-│   │   └── apis/google-adwords/   # Google Ads API endpoints
+│   │   ├── apis/google-adwords/   # Google Ads API endpoints
+│   │   └── reporting/             # Reporting Projects API
+│   │       ├── categories/        # Category management
+│   │       ├── reports/           # Report CRUD & import
+│   │       ├── sections/          # Section editing & completion
+│   │       └── search/            # Full-text search
 │   ├── dashboard/
 │   │   ├── projects/              # Project management pages
+│   │   ├── reporting/             # Reporting Projects pages
+│   │   │   └── [id]/              # Individual report viewer
 │   │   ├── analytics/google-adwords/ # Google Ads analytics
 │   │   └── apis/                  # API configuration pages
+│   ├── public/
+│   │   └── report/[id]/           # Public shared report viewer
 │   └── page.tsx                   # Landing page
 ├── components/
 │   ├── layout/                    # Header, Sidebar, Footer
 │   ├── timeline/                  # Timeline components
-│   └── dashboard/                 # Dashboard widgets
+│   ├── dashboard/                 # Dashboard widgets
+│   ├── reporting/                 # Reporting Projects components
+│   │   ├── ReportingLayout.tsx    # Main reporting layout
+│   │   ├── CategoryTreeView.tsx   # Hierarchical categories
+│   │   ├── ReportsList.tsx        # Report grid with highlighting
+│   │   ├── ReportSearch.tsx       # Debounced search
+│   │   ├── ImportReportDialog.tsx # Markdown import
+│   │   └── SectionEditor.tsx      # WYSIWYG editor
+│   └── ui/                        # Reusable UI components
+│       ├── skeleton.tsx           # Loading states
+│       ├── button.tsx             # Button component
+│       ├── dialog.tsx             # Modal dialogs
+│       └── ...                    # Other UI primitives
 ├── lib/
 │   ├── auth.ts                    # NextAuth setup
 │   ├── prisma.ts                  # Prisma client
@@ -124,26 +192,38 @@ src/
 │   ├── googleAdsService.ts        # Google Ads API service
 │   ├── googleAdsMetricsSync.ts    # Background sync service
 │   ├── generalTasks.ts            # General tasks utilities
+│   ├── markdownParser.ts          # Markdown to HTML conversion
+│   ├── utils.ts                   # CSS utilities & helpers
 │   └── apiActivity.ts             # API activity logging
 ```
 
 ## Key Features
 
-### 1. Project Management
+### 1. Reporting Projects System ✅ PRODUCTION-READY
+- **Hierarchical Categories**: 4-level deep category organization with full CRUD operations
+- **Markdown Import**: Intelligent parsing of markdown files with H2 section detection
+- **WYSIWYG Editing**: TipTap rich text editor with auto-save and conflict protection
+- **Section Management**: Complete/incomplete tracking with progress visualization
+- **Public Sharing**: Beautiful public viewer pages with Open Graph meta tags
+- **Advanced Search**: Real-time search with highlighting and content snippets
+- **Professional UX**: Skeleton loading states, accordion collapse, smooth animations
+- **Navigation Integration**: Seamlessly integrated into main application sidebar
+
+### 2. Project Management
 - Full CRUD operations for projects
 - Timeline generation from markdown files
 - Status tracking (Active, Completed, Archived)
 - Priority levels (Low, Medium, High, Urgent)
 - Manual timeline event creation via drawer interface
 
-### 2. General Tasks System ✅ PRODUCTION-READY
+### 3. General Tasks System ✅ PRODUCTION-READY
 - **Database-backed**: Migrated from localStorage to PostgreSQL
 - **Cross-platform**: Tasks appear in Daily Manifest, Tomorrow's Milestones, Overdue Events
 - **Full CRUD API**: RESTful endpoints with authentication
 - **Migration tools**: Browser console scripts for localStorage transition
 - **Two-column layout**: Integrated in projects page (left: tasks, right: projects)
 
-### 3. Google AdWords Integration ✅ FULLY OPERATIONAL
+### 4. Google AdWords Integration ✅ FULLY OPERATIONAL
 - **Configuration**: `/dashboard/apis/google-adwords`
 - **Analytics**: `/dashboard/analytics/google-adwords` with live data
 - **Cache-first architecture**: 90%+ API call reduction, sub-second load times
@@ -152,7 +232,7 @@ src/
 - **Campaign performance**: Individual breakdowns with spend data
 - **Background sync**: Intelligent sync with activity logging
 
-### 4. Analytics Dashboard
+### 5. Analytics Dashboard
 - **Google Ads**: Horizontal metrics layout, simplified 2-card design
 - **Performance charts**: StackedAreaChart with cost vs conversions
 - **Platform Performance**: Individual campaign visualization with separate lines for each campaign
@@ -161,7 +241,7 @@ src/
 - **Data freshness indicators**: Color-coded cache status
 - **Manual refresh**: Instant refresh with loading states
 
-### 5. Dashboard Manifest System ✅ FULLY INTEGRATED
+### 6. Dashboard Manifest System ✅ FULLY INTEGRATED
 - **Daily Manifest**: Shows today's timeline events + General Tasks due today
 - **Tomorrow's Manifest**: Shows tomorrow's milestones + General Tasks due tomorrow
 - **Overdue Events**: Shows overdue timeline events + General Tasks past due date
@@ -197,7 +277,40 @@ src/
 - `POST /api/apis/google-adwords/sync` - Manual sync with historical support
 - `GET /api/apis/google-adwords/activities` - API activity log
 
+### Reporting Projects ✅ PRODUCTION-READY
+- `GET/POST /api/reporting/categories` - Category management with depth validation
+- `PUT/DELETE /api/reporting/categories/[id]` - Update/Delete categories
+- `GET/POST /api/reporting/reports` - Report CRUD operations
+- `GET/PUT/DELETE /api/reporting/reports/[id]` - Single report operations (public access support)
+- `POST /api/reporting/reports/import` - Markdown import with section parsing
+- `PUT /api/reporting/sections/[id]` - Section content editing (WYSIWYG)
+- `PUT /api/reporting/sections/[id]/complete` - Section completion tracking
+- `GET /api/reporting/search` - Full-text search with highlighting
+
 ## Recent Critical Updates
+
+### 🚀 MAJOR FEATURE: Reporting Projects System Complete (2025-10-02) ✅
+- **Complete Implementation**: Full reporting system from database to rich text editing
+- **Database Models**: Added 3 new models (ReportCategory, Report, ReportSection) with proper relations
+- **14 API Endpoints**: Complete CRUD operations with authentication and public sharing support
+- **WYSIWYG Editor**: TipTap integration with auto-save, conflict protection, and professional toolbar
+- **Public Sharing**: Beautiful public viewer pages with Open Graph meta tags for social media
+- **Advanced Search**: Real-time search with yellow highlighting and content snippet previews
+- **Professional UX**: Skeleton loading states, true accordion collapse, smooth animations
+- **Navigation Integration**: Added to main sidebar under Projects → Reporting Projects
+- **Production Ready**: Comprehensive error handling, null safety, and performance optimization
+
+### 🚀 Database Relations & API Integrity Fixes (2025-09-25) ✅
+- **Prisma Relations Fixed**: Corrected all API endpoints to use proper schema relation names
+  - Projects API: `owner` → `User`, `timelineEvents` → `TimelineEvent`
+  - Timeline APIs: `project` → `Project` (today, tomorrow, overdue routes)
+  - Platform Metrics: `apiConfigurations` → `ApiConfiguration`
+  - Google Ads APIs: `metrics` → `GoogleAdsMetrics`
+- **API Safety Improvements**: Added null-safe array handling for undefined relations
+- **Data Integrity**: Removed ALL fallback/fake data generation - APIs now show real data or proper errors
+- **Activity Logging Fixed**: Added missing `id` field generation for ApiActivity records
+- **Debug Enhancement**: Added comprehensive logging for Google Ads metrics sync troubleshooting
+- **Frontend Compatibility**: Maintained backwards compatibility by mapping relation names in responses
 
 ### 🚀 Platform Performance Analytics Enhancement (2025-09-24) ✅
 - **Individual Campaign Lines**: Platform Performance Analytics chart now displays separate lines for each Google Ads campaign
@@ -301,21 +414,30 @@ GITHUB_CLIENT_SECRET="your-github-client-secret"
 - Verify Prisma schema is valid
 
 ## Current Status ✅ PRODUCTION-READY
-- **Core Features**: Auth, projects, timelines complete
+- **Core Features**: Auth, projects, timelines, reporting system complete
+- **Reporting Projects**: Full implementation with WYSIWYG editing, public sharing, advanced search
+- **Database Relations**: All Prisma schema relations properly implemented across APIs (including new reporting models)
+- **Data Integrity**: No fallback data - real API connections required for all metrics
 - **General Tasks**: Database migration complete, cross-platform integration
 - **Dashboard Integration**: General Tasks appear in Daily/Tomorrow's Manifest and Overdue Events
-- **Google AdWords**: Fully optimized with cache-first architecture
-- **Analytics Dashboard**: Enterprise-grade with sub-second load times
+- **Google AdWords**: Cache-first architecture with comprehensive error handling and debugging
+- **Analytics Dashboard**: Real-time data visualization with proper connection error handling
 - **Historical Data**: Production-ready sync system with daily granularity
 - **Manual Creation**: Timeline events via drawer interface + standalone General Task form
 - **Migration Tools**: localStorage to database transition complete
-- **Production Deployment**: All critical fixes applied, TypeScript clean
+- **Production Deployment**: All critical database relation fixes applied, API integrity ensured
+- **Activity Logging**: Comprehensive API operation tracking with proper database persistence
 - **Timezone Handling**: UTC date parsing resolved, cross-platform date consistency
+- **Navigation Integration**: Reporting Projects fully integrated into main application sidebar
 
 ### Next Development
-- Google Analytics integration (routes created, implementation pending)
-- Additional platform integrations (Facebook Ads, TikTok Ads)
-- Enhanced reporting features
+- **Google Analytics Integration**: Routes created, API implementation pending
+- **Additional Platform Integrations**: Facebook Ads, TikTok Ads, LinkedIn Ads (real API implementations)
+- **Enhanced Reporting Features**: Advanced collaboration, version control, comment system
+- **Performance Monitoring**: API response time optimization and caching improvements
+- **Google Ads Data Sync**: Initial campaign and metrics data population for existing connections
+- **Real-time Sync Optimization**: Enhanced background sync for immediate data availability
+- **Reporting Enhancements**: Export functionality (PDF, DOCX), real-time collaboration, AI features
 
 ## Support & Tools
 - **Issues**: https://github.com/anthropics/claude-code/issues

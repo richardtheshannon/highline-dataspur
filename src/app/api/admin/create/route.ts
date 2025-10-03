@@ -23,10 +23,12 @@ export async function POST(request: Request) {
     // Create admin user
     const adminUser = await prisma.user.create({
       data: {
+        id: crypto.randomUUID(),
         email: 'admin@dataspur.com',
         name: 'Administrator',
         password: hashedPassword,
-        role: 'ADMIN'
+        role: 'ADMIN',
+        updatedAt: new Date()
       }
     })
     

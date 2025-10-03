@@ -1046,7 +1046,7 @@ body {
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        z-index: 999 !important;
+        z-index: 1001 !important;
     }
     
     /* When not fixed, footer should be static on mobile */
@@ -1559,19 +1559,30 @@ body {
 /* Bottom Drawer Styles */
 .bottom-drawer {
     position: fixed;
-    bottom: 0;
+    bottom: 60px; /* Position above footer height */
     left: 0;
     right: 0;
     background: var(--bg-primary);
     border-top: 1px solid var(--border-color);
-    transform: translateY(100%);
+    transform: translateY(calc(100% + 60px)); /* Hide below viewport including footer height */
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
-    max-height: 70vh;
+    z-index: 1002; /* Higher than footer (1001) */
+    max-height: 50vh; /* Reduced to ensure it fits above footer */
     overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .bottom-drawer.drawer-open {
+    transform: translateY(0);
+}
+
+/* When footer is not fixed, drawer should go all the way to bottom */
+body:not(.has-fixed-footer) .bottom-drawer {
+    bottom: 0;
+    transform: translateY(100%);
+}
+
+body:not(.has-fixed-footer) .bottom-drawer.drawer-open {
     transform: translateY(0);
 }
 
@@ -1679,7 +1690,7 @@ body {
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    z-index: 50 !important;
+    z-index: 1001 !important;
     background: var(--bg-secondary) !important;
 }
 

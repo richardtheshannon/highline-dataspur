@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, TimelineEventStatus } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { TimelineEventStatus } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 // Map frontend status values to database enum values
 function mapStatusToDb(status: string): TimelineEventStatus {

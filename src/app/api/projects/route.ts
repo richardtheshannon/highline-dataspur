@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, TimelineEventStatus } from '@prisma/client'
+import { TimelineEventStatus } from '@prisma/client'
 import { getSession } from '@/lib/auth'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // Map frontend status values to database enum values
 function mapStatusToDb(status: string): TimelineEventStatus {
@@ -49,10 +48,10 @@ export async function GET(request: NextRequest) {
       //   ]
       // },
       include: {
-        owner: {
+        User: {
           select: { id: true, name: true, email: true }
         },
-        timelineEvents: {
+        TimelineEvent: {
           orderBy: { date: 'asc' }
         }
       },
@@ -63,14 +62,18 @@ export async function GET(request: NextRequest) {
     console.log('Projects data:', projects)
     
     // Convert timeline event status from database enum to frontend format
-    const projectsWithMappedStatus = projects.map(project => ({
-      ...project,
-      timelineEvents: project.timelineEvents.map(event => ({
-        ...event,
-        status: mapStatusFromDb(event.status),
-        date: event.date.toISOString()
-      }))
-    }))
+    const projectsWithMappedStatus = projects.map(project => {
+      const { User, TimelineEvent, ...projectData } = project
+      return {
+        ...projectData,
+        owner: User, // Map User relation to owner for frontend compatibility
+        timelineEvents: TimelineEvent.map(event => ({
+          ...event,
+          status: mapStatusFromDb(event.status),
+          date: event.date.toISOString()
+        }))
+      }
+    })
     
     return NextResponse.json(projectsWithMappedStatus)
   } catch (error) {
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
           ownerId: userId
         },
         include: {
-          owner: {
+          User: {
             select: { id: true, name: true, email: true }
           }
         }
@@ -152,9 +155,12 @@ export async function POST(request: NextRequest) {
       date: event.date.toISOString()
     }))
 
-    return NextResponse.json({ 
-      ...project, 
-      timelineEvents: mappedTimelineEvents 
+    // Map User relation to owner for frontend compatibility
+    const { User, ...projectData } = project
+    return NextResponse.json({
+      ...projectData,
+      owner: User,
+      timelineEvents: mappedTimelineEvents
     }, { status: 201 })
   } catch (error) {
     console.error('Projects POST error:', error)

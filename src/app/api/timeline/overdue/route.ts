@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         date: {
           lt: now
         },
-        project: {
+        Project: {
           ownerId: user.id,
           status: {
             notIn: ['COMPLETED', 'CANCELLED']
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         }
       },
       include: {
-        project: {
+        Project: {
           select: {
             id: true,
             name: true,
@@ -61,18 +61,22 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${overdueEvents.length} overdue timeline events`)
     
-    // Calculate how overdue each event is
+    // Calculate how overdue each event is and map relations
     const eventsWithOverdueInfo = overdueEvents.map(event => {
       const eventDate = new Date(event.date)
       const msOverdue = now.getTime() - eventDate.getTime()
       const daysOverdue = Math.floor(msOverdue / (1000 * 60 * 60 * 24))
       const hoursOverdue = Math.floor(msOverdue / (1000 * 60 * 60))
-      
+
+      // Map Project relation to project for frontend compatibility
+      const { Project, ...eventData } = event
+
       return {
-        ...event,
+        ...eventData,
+        project: Project,
         daysOverdue,
         hoursOverdue,
-        overdueText: daysOverdue > 0 
+        overdueText: daysOverdue > 0
           ? `${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`
           : `${hoursOverdue} hour${hoursOverdue !== 1 ? 's' : ''} overdue`
       }

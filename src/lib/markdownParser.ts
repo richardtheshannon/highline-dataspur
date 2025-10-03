@@ -258,16 +258,111 @@ export function validateMarkdownFile(file: File): { valid: boolean; error?: stri
 export function readFileAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    
+
     reader.onload = (event) => {
       const content = event.target?.result as string
       resolve(content || '')
     }
-    
+
     reader.onerror = () => {
       reject(new Error('Failed to read file'))
     }
-    
+
     reader.readAsText(file)
   })
+}
+
+/**
+ * Convert markdown to HTML for reporting feature
+ */
+export function markdownToHtml(markdown: string): string {
+  return convertMarkdownToHtml(markdown)
+}
+
+/**
+ * Parse HTML content and extract H2 sections for reporting
+ */
+export function parseH2Sections(html: string): Array<{
+  heading: string
+  content: string
+  order: number
+}> {
+  const sections: Array<{ heading: string; content: string; order: number }> = []
+
+  // Use regex to find all H2 tags and split content
+  const h2Pattern = /<h2[^>]*>(.*?)<\/h2>/gi
+  let lastIndex = 0
+  let order = 0
+  const matches: Array<{ heading: string; index: number }> = []
+
+  let match
+  while ((match = h2Pattern.exec(html)) !== null) {
+    matches.push({
+      heading: match[1].replace(/<[^>]*>/g, '').trim(),
+      index: match.index
+    })
+  }
+
+  // If no H2 sections found, return entire content as single section
+  if (matches.length === 0) {
+    return [{
+      heading: 'Content',
+      content: html,
+      order: 0
+    }]
+  }
+
+  // Extract content for each section
+  matches.forEach((currentMatch, i) => {
+    const nextMatch = matches[i + 1]
+    const contentStart = html.indexOf('</h2>', currentMatch.index) + 5
+    const contentEnd = nextMatch ? nextMatch.index : html.length
+    const content = html.substring(contentStart, contentEnd).trim()
+
+    sections.push({
+      heading: currentMatch.heading,
+      content,
+      order: order++
+    })
+  })
+
+  return sections
+}
+
+/**
+ * Extract title from markdown content for reporting
+ */
+export function extractTitleFromMarkdown(markdown: string): string {
+  // Look for first H1 heading
+  const h1Match = markdown.match(/^#\s+(.+)$/m)
+  if (h1Match) {
+    return h1Match[1].trim()
+  }
+
+  // Fallback to first non-empty line
+  const lines = markdown.split('\n').filter(line => line.trim())
+  if (lines.length > 0) {
+    return lines[0].replace(/^#+\s*/, '').trim()
+  }
+
+  return 'Untitled Report'
+}
+
+/**
+ * Extract description from markdown content for reporting
+ */
+export function extractDescriptionFromMarkdown(markdown: string): string {
+  // Remove title (first heading)
+  const withoutTitle = markdown.replace(/^#.*$/m, '').trim()
+
+  // Get first paragraph (non-heading content)
+  const paragraphMatch = withoutTitle.match(/^[^#\n].+$/m)
+  if (paragraphMatch) {
+    const description = paragraphMatch[0].trim()
+    return description.length > 200
+      ? description.substring(0, 197) + '...'
+      : description
+  }
+
+  return ''
 }

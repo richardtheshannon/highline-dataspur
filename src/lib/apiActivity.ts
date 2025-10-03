@@ -17,6 +17,7 @@ export async function logApiActivity(data: ApiActivityData) {
   try {
     const activity = await prisma.apiActivity.create({
       data: {
+        id: crypto.randomUUID(), // Generate unique ID
         userId: data.userId,
         apiConfigId: data.apiConfigId,
         provider: data.provider,
@@ -47,7 +48,7 @@ export async function getRecentApiActivity(userId: string, provider?: ApiProvide
       },
       take: limit,
       include: {
-        apiConfig: {
+        ApiConfiguration: {
           select: {
             name: true,
             provider: true

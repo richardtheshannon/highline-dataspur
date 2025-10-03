@@ -368,7 +368,7 @@ export default function ProjectsContent() {
       </div>
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'start' }}>
+      <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', alignItems: 'start' }}>
         {/* Left Column - 1/3 */}
         <div className="main-content-left">
           {/* General Task List */}

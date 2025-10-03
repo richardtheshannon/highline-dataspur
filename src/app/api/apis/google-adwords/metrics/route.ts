@@ -77,12 +77,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch campaigns with their metrics from cache
+    console.log('[GoogleAdsMetrics] Fetching campaigns for config:', config.id)
+    console.log('[GoogleAdsMetrics] Date range:', startDate, 'to', endDate)
+
     const campaigns = await prisma.googleAdsCampaign.findMany({
       where: {
         apiConfigId: config.id
       },
       include: {
-        metrics: {
+        GoogleAdsMetrics: {
           where: {
             date: {
               gte: startDate,
@@ -94,6 +97,11 @@ export async function GET(request: NextRequest) {
           }
         }
       }
+    })
+
+    console.log('[GoogleAdsMetrics] Found', campaigns.length, 'campaigns in database')
+    campaigns.forEach(campaign => {
+      console.log(`[GoogleAdsMetrics] Campaign: ${campaign.name}, Metrics: ${campaign.GoogleAdsMetrics?.length || 0}`)
     })
 
     if (campaigns.length === 0) {
@@ -144,7 +152,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Process cached data into metrics format
-    const metrics = processCachedData(campaigns, timeRange, startDate, endDate)
+    console.log('[GoogleAdsMetrics] Processing cached data...')
+    let metrics
+    try {
+      metrics = processCachedData(campaigns, timeRange, startDate, endDate)
+      console.log('[GoogleAdsMetrics] Successfully processed cached data')
+    } catch (processingError) {
+      console.error('[GoogleAdsMetrics] Error processing cached data:', processingError)
+      throw processingError
+    }
 
     // Log successful cached metrics fetch
     await logApiActivity(createApiActivity.metricsSync(
@@ -322,34 +338,8 @@ function processGoogleAdsData(campaigns: any[], timeRange: string) {
     performanceData: campaignPerformanceData.get(campaign.id) || []
   }))
 
-  // Generate comparison data (simulated for now - in production, compare with previous period)
-  const comparison = {
-    impressions: {
-      value: totals.impressions,
-      change: Math.round(Math.random() * 20 - 10), // -10% to +10% random change
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    clicks: {
-      value: totals.clicks,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    conversions: {
-      value: totals.conversions,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    cost: {
-      value: totals.cost,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    cpa: {
-      value: calculatedMetrics.cpa,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    }
-  }
+  // TODO: Implement real comparison data with previous period
+  const comparison = null // No fake comparison data
 
   return {
     totals: {
@@ -393,7 +383,7 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
     }
 
     // Fill in actual data from campaign metrics
-    campaign.metrics.forEach((metric: any) => {
+    (campaign.GoogleAdsMetrics || []).forEach((metric: any) => {
       const dateKey = metric.date.toISOString().split('T')[0]
       if (campaignMetrics.has(dateKey)) {
         const dayData = {
@@ -421,7 +411,7 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
   // Process campaigns with their cached metrics
   const formattedCampaigns = campaigns.map(campaign => {
     // Calculate totals for this campaign across the date range
-    const campaignTotals = campaign.metrics.reduce(
+    const campaignTotals = (campaign.GoogleAdsMetrics || []).reduce(
       (acc: any, metric: any) => ({
         impressions: acc.impressions + metric.impressions,
         clicks: acc.clicks + metric.clicks,
@@ -532,34 +522,8 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
 
   performanceData.push(...sortedMetrics.sort((a, b) => a.date.localeCompare(b.date)))
 
-  // Generate comparison data (placeholder - would need historical data for real comparison)
-  const comparison = {
-    impressions: {
-      value: totals.impressions,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    clicks: {
-      value: totals.clicks,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    conversions: {
-      value: totals.conversions,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    cost: {
-      value: totals.cost,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    },
-    cpa: {
-      value: calculatedMetrics.cpa,
-      change: Math.round(Math.random() * 20 - 10),
-      trend: Math.random() > 0.5 ? 'up' : 'down'
-    }
-  }
+  // TODO: Implement real comparison data with historical data
+  const comparison = null // No fake comparison data
 
   return {
     totals: {

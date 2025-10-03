@@ -7,188 +7,197 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                String             @id @default(cuid())
-  email             String?            @unique
-  name              String?
-  role              UserRole           @default(USER)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  password          String?
-  apiActivities     ApiActivity[]      @relation("UserApiActivities")
-  apiConfigurations ApiConfiguration[] @relation("UserApiConfigs")
-  generalTasks      GeneralTask[]      @relation("UserGeneralTasks")
-  projectsOwned     Project[]          @relation("ProjectOwner")
-}
-
-model Project {
-  id             String          @id @default(cuid())
-  name           String
-  description    String?
-  projectGoal    String?
-  projectValue   Float?
-  website        String?
-  status         ProjectStatus   @default(PLANNING)
-  priority       Priority        @default(MEDIUM)
-  projectType    ProjectType     @default(DEVELOPMENT)
-  startDate      DateTime?
-  endDate        DateTime?
-  budget         Float?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  ownerId        String
-  owner          User            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  timelineEvents TimelineEvent[]
-}
-
-model TimelineEvent {
-  id          String              @id @default(cuid())
-  projectId   String
-  title       String
-  description String?
-  date        DateTime
-  type        String              @default("milestone")
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  status      TimelineEventStatus @default(PENDING)
-  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+model ApiActivity {
+  id               String            @id
+  userId           String
+  apiConfigId      String
+  provider         ApiProvider
+  type             ApiActivityType
+  status           ApiActivityStatus
+  title            String
+  description      String?
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+  ApiConfiguration ApiConfiguration  @relation(fields: [apiConfigId], references: [id], onDelete: Cascade)
+  User             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ApiConfiguration {
-  id                 String              @id @default(cuid())
-  userId             String
-  provider           ApiProvider
-  name               String
-  clientId           String
-  clientSecret       String
-  developerToken     String?
-  apiKey             String?
-  refreshToken       String?
-  accessToken        String?
-  tokenExpiry        DateTime?
-  status             ApiConfigStatus     @default(INACTIVE)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  activities         ApiActivity[]       @relation("ApiConfigActivities")
-  user               User                @relation("UserApiConfigs", fields: [userId], references: [id], onDelete: Cascade)
-  googleAdsCampaigns GoogleAdsCampaign[] @relation("GoogleAdsCampaigns")
+  id                String              @id
+  userId            String
+  provider          ApiProvider
+  name              String
+  clientId          String
+  clientSecret      String
+  developerToken    String?
+  apiKey            String?
+  refreshToken      String?
+  accessToken       String?
+  tokenExpiry       DateTime?
+  status            ApiConfigStatus     @default(INACTIVE)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  ApiActivity       ApiActivity[]
+  User              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  GoogleAdsCampaign GoogleAdsCampaign[]
 
   @@unique([userId, provider])
 }
 
-model ApiActivity {
-  id          String            @id @default(cuid())
-  userId      String
-  apiConfigId String
-  provider    ApiProvider
-  type        ApiActivityType
-  status      ApiActivityStatus
-  title       String
-  description String?
-  metadata    Json?
-  createdAt   DateTime          @default(now())
-  apiConfig   ApiConfiguration  @relation("ApiConfigActivities", fields: [apiConfigId], references: [id], onDelete: Cascade)
-  user        User              @relation("UserApiActivities", fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model GoogleAdsCampaign {
-  id          String             @id @default(cuid())
-  apiConfigId String
-  campaignId  String
-  name        String
-  status      String
-  budget      Float?
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  lastSyncAt  DateTime           @default(now())
-  apiConfig   ApiConfiguration   @relation("GoogleAdsCampaigns", fields: [apiConfigId], references: [id], onDelete: Cascade)
-  metrics     GoogleAdsMetrics[]
-
-  @@unique([apiConfigId, campaignId])
-}
-
-model GoogleAdsMetrics {
-  id             String            @id @default(cuid())
-  campaignId     String
-  date           DateTime          @db.Date
-  impressions    Int               @default(0)
-  clicks         Int               @default(0)
-  conversions    Float             @default(0)
-  cost           Float             @default(0)
-  ctr            Float             @default(0)
-  averageCpc     Float             @default(0)
-  conversionRate Float             @default(0)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  campaign       GoogleAdsCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  @@unique([campaignId, date])
-}
-
 model GeneralTask {
-  id          String    @id @default(cuid())
+  id          String    @id
   userId      String
   title       String
   description String?
   completed   Boolean   @default(false)
   dueDate     DateTime? @db.Date
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  user        User      @relation("UserGeneralTasks", fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime
+  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@index([userId, completed])
   @@index([userId, dueDate])
+  @@index([userId])
 }
 
-enum UserRole {
-  ADMIN
-  USER
-  VIEWER
+model GoogleAdsCampaign {
+  id               String             @id
+  apiConfigId      String
+  campaignId       String
+  name             String
+  status           String
+  budget           Float?
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  lastSyncAt       DateTime           @default(now())
+  ApiConfiguration ApiConfiguration   @relation(fields: [apiConfigId], references: [id], onDelete: Cascade)
+  GoogleAdsMetrics GoogleAdsMetrics[]
+
+  @@unique([apiConfigId, campaignId])
 }
 
-enum ProjectStatus {
-  PLANNING
-  IN_PROGRESS
-  ON_HOLD
-  COMPLETED
-  CANCELLED
+model GoogleAdsMetrics {
+  id                String            @id
+  campaignId        String
+  date              DateTime          @db.Date
+  impressions       Int               @default(0)
+  clicks            Int               @default(0)
+  conversions       Float             @default(0)
+  cost              Float             @default(0)
+  ctr               Float             @default(0)
+  averageCpc        Float             @default(0)
+  conversionRate    Float             @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  GoogleAdsCampaign GoogleAdsCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
 }
 
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
+model Project {
+  id            String          @id
+  name          String
+  description   String?
+  projectGoal   String?
+  projectValue  Float?
+  website       String?
+  status        ProjectStatus   @default(PLANNING)
+  priority      Priority        @default(MEDIUM)
+  projectType   ProjectType     @default(DEVELOPMENT)
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Float?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  ownerId       String
+  User          User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  TimelineEvent TimelineEvent[]
 }
 
-enum ProjectType {
-  DEVELOPMENT
-  DESIGN
-  MARKETING
-  RESEARCH
-  OTHER
+model TimelineEvent {
+  id          String              @id
+  projectId   String
+  title       String
+  description String?
+  date        DateTime
+  type        String              @default("milestone")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime
+  status      TimelineEventStatus @default(PENDING)
+  Project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-enum TimelineEventStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
+model User {
+  id               String             @id
+  email            String?            @unique
+  name             String?
+  role             UserRole           @default(USER)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  password         String?
+  ApiActivity      ApiActivity[]
+  ApiConfiguration ApiConfiguration[]
+  GeneralTask      GeneralTask[]
+  Project          Project[]
+  ReportCategory   ReportCategory[]
+  Report           Report[]
 }
 
-enum ApiProvider {
-  GOOGLE_ADWORDS
-  FACEBOOK_ADS
-  TWITTER_ADS
-  LINKEDIN_ADS
-  GOOGLE_ANALYTICS
+model ReportCategory {
+  id          String           @id @default(cuid())
+  userId      String
+  name        String
+  parentId    String?
+  level       Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  User        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent      ReportCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    ReportCategory[] @relation("CategoryTree")
+  Report      Report[]
+
+  @@index([userId, parentId])
 }
 
-enum ApiConfigStatus {
-  ACTIVE
-  INACTIVE
+model Report {
+  id            String          @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  content       String          @db.Text
+  categoryId    String
+  author        String?
+  isPublic      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  User          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ReportCategory ReportCategory @relation(fields: [categoryId], references: [id])
+  ReportSection ReportSection[]
+
+  @@index([userId, categoryId])
+  @@index([isPublic])
+}
+
+model ReportSection {
+  id          String    @id @default(cuid())
+  reportId    String
+  heading     String
+  content     String    @db.Text
+  order       Int
+  isComplete  Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, order])
+}
+
+enum ApiActivityStatus {
+  SUCCESS
+  WARNING
   ERROR
 }
 
@@ -206,8 +215,51 @@ enum ApiActivityType {
   BACKGROUND_SYNC
 }
 
-enum ApiActivityStatus {
-  SUCCESS
-  WARNING
+enum ApiConfigStatus {
+  ACTIVE
+  INACTIVE
   ERROR
+}
+
+enum ApiProvider {
+  GOOGLE_ADWORDS
+  FACEBOOK_ADS
+  TWITTER_ADS
+  LINKEDIN_ADS
+  GOOGLE_ANALYTICS
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectType {
+  DEVELOPMENT
+  DESIGN
+  MARKETING
+  RESEARCH
+  OTHER
+}
+
+enum TimelineEventStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  VIEWER
 }
