@@ -317,8 +317,6 @@ export default function CategoryTreeView({
 
       <SimpleTreeView
         aria-label="category navigator"
-        defaultCollapseIcon={<ChevronDown className="h-4 w-4" />}
-        defaultExpandIcon={<ChevronRight className="h-4 w-4" />}
         expandedItems={expanded}
         selectedItems={selectedCategoryId || 'root'}
         onExpandedItemsChange={handleToggle}

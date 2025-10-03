@@ -1,4 +1,5 @@
 import { PrismaClient, ApiProvider, ApiActivityType, ApiActivityStatus } from '@prisma/client'
+import { createId } from '@paralleldrive/cuid2'
 import { decryptString } from './encryption'
 import { GoogleAdsService, GoogleAdsCredentials } from './googleAdsService'
 import { logApiActivity, createApiActivity } from './apiActivity'
@@ -90,6 +91,7 @@ export class GoogleAdsMetricsSync {
               lastSyncAt: new Date()
             },
             create: {
+              id: createId(),
               apiConfigId: this.apiConfigId,
               campaignId: campaign.id,
               name: campaign.name,
@@ -97,7 +99,8 @@ export class GoogleAdsMetricsSync {
               budget: campaign.budget,
               startDate: new Date(campaign.startDate),
               endDate: new Date(campaign.endDate),
-              lastSyncAt: new Date()
+              lastSyncAt: new Date(),
+              updatedAt: new Date()
             }
           })
           syncedCount++
@@ -203,6 +206,7 @@ export class GoogleAdsMetricsSync {
               conversionRate: dailyMetric.conversionRate
             },
             create: {
+              id: createId(),
               campaignId: localCampaign.id,
               date: metricDate,
               impressions: dailyMetric.impressions,
@@ -211,7 +215,8 @@ export class GoogleAdsMetricsSync {
               cost: dailyMetric.cost,
               ctr: dailyMetric.ctr,
               averageCpc: dailyMetric.averageCpc,
-              conversionRate: dailyMetric.conversionRate
+              conversionRate: dailyMetric.conversionRate,
+              updatedAt: new Date()
             }
           })
           syncedCount++
