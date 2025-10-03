@@ -66,6 +66,7 @@ export async function POST() {
       // Log successful activity
       await prisma.apiActivity.create({
         data: {
+          id: crypto.randomUUID(),
           userId: session.user.id,
           apiConfigId: config.id,
           provider: ApiProvider.GOOGLE_ANALYTICS,
@@ -99,6 +100,7 @@ export async function POST() {
       // Log failed activity
       await prisma.apiActivity.create({
         data: {
+          id: crypto.randomUUID(),
           userId: session.user.id,
           apiConfigId: config.id,
           provider: ApiProvider.GOOGLE_ANALYTICS,

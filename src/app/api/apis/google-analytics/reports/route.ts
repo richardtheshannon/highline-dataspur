@@ -92,6 +92,7 @@ export async function GET() {
     // Log activity
     await prisma.apiActivity.create({
       data: {
+        id: crypto.randomUUID(),
         userId: session.user.id,
         apiConfigId: config.id,
         provider: ApiProvider.GOOGLE_ANALYTICS,
@@ -131,6 +132,7 @@ export async function GET() {
         if (config) {
           await prisma.apiActivity.create({
             data: {
+              id: crypto.randomUUID(),
               userId: session.user.id,
               apiConfigId: config.id,
               provider: ApiProvider.GOOGLE_ANALYTICS,

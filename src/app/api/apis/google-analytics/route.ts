@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
       // Create new config
       config = await prisma.apiConfiguration.create({
         data: {
+          id: crypto.randomUUID(),
           userId: session.user.id,
           provider: ApiProvider.GOOGLE_ANALYTICS,
           name: 'Google Analytics',
@@ -110,7 +111,8 @@ export async function POST(request: NextRequest) {
           clientSecret: encrypt(apiSecret),
           developerToken: propertyId || null,
           apiKey: viewId || null,
-          status: ApiConfigStatus.INACTIVE
+          status: ApiConfigStatus.INACTIVE,
+          updatedAt: new Date()
         }
       })
     }
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
     // Log activity
     await prisma.apiActivity.create({
       data: {
+        id: crypto.randomUUID(),
         userId: session.user.id,
         apiConfigId: config.id,
         provider: ApiProvider.GOOGLE_ANALYTICS,
