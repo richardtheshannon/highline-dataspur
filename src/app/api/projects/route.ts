@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
       // Create the project first
       const project = await tx.project.create({
         data: {
+          id: crypto.randomUUID(),
           name,
           description,
           projectGoal,
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
           projectType: projectType || 'DEVELOPMENT',
           startDate: startDate ? new Date(startDate) : null,
           endDate: endDate ? new Date(endDate) : null,
-          ownerId: userId
+          ownerId: userId,
+          updatedAt: new Date()
         },
         include: {
           User: {
@@ -126,12 +128,14 @@ export async function POST(request: NextRequest) {
       let createdEvents: any[] = []
       if (timelineEvents && Array.isArray(timelineEvents) && timelineEvents.length > 0) {
         const timelineData = timelineEvents.map((event: any) => ({
+          id: crypto.randomUUID(),
           projectId: project.id,
           title: event.title,
           description: event.description || null,
           date: new Date(event.date),
           type: event.type || 'milestone',
-          status: mapStatusToDb(event.status || 'pending')
+          status: mapStatusToDb(event.status || 'pending'),
+          updatedAt: new Date()
         }))
 
         // Create timeline events individually (SQLite compatibility)
@@ -156,10 +160,9 @@ export async function POST(request: NextRequest) {
     }))
 
     // Map User relation to owner for frontend compatibility
-    const { User, ...projectData } = project
     return NextResponse.json({
-      ...projectData,
-      owner: User,
+      ...project,
+      owner: project.User, // Map User relation to owner for frontend compatibility
       timelineEvents: mappedTimelineEvents
     }, { status: 201 })
   } catch (error) {

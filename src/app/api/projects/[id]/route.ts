@@ -115,12 +115,14 @@ export async function PUT(
         // Create new timeline events if array is not empty
         if (Array.isArray(timelineEvents) && timelineEvents.length > 0) {
           const timelineData = timelineEvents.map((event: any) => ({
+            id: crypto.randomUUID(),
             projectId: params.id,
             title: event.title,
             description: event.description || null,
             date: new Date(event.date),
             type: event.type || 'milestone',
-            status: mapStatusToDb(event.status || 'pending')
+            status: mapStatusToDb(event.status || 'pending'),
+            updatedAt: new Date()
           }))
 
           // Create timeline events individually (for compatibility)
