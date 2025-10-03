@@ -75,11 +75,11 @@ export default function CategoryTreeView({
 
   const tree = buildTree(categories);
 
-  const handleToggle = (event: React.SyntheticEvent, nodeIds: string[]) => {
+  const handleToggle = (event: React.SyntheticEvent | null, nodeIds: string[]) => {
     setExpanded(nodeIds);
   };
 
-  const handleSelect = (event: React.SyntheticEvent, nodeIds: string | string[] | null) => {
+  const handleSelect = (event: React.SyntheticEvent | null, nodeIds: string | string[] | null) => {
     const nodeId = Array.isArray(nodeIds) ? nodeIds[0] : nodeIds;
     if (nodeId === 'root') {
       onSelectCategory(null);
