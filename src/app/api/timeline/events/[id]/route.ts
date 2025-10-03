@@ -34,7 +34,7 @@ export async function GET(
     const event = await prisma.timelineEvent.findUnique({
       where: { id: eventId },
       include: {
-        project: {
+        Project: {
           select: {
             id: true,
             name: true
@@ -53,6 +53,7 @@ export async function GET(
     // Convert timeline event status from database enum to frontend format
     const eventWithMappedStatus = {
       ...event,
+      project: event.Project, // Map Project relation to project for frontend compatibility
       status: mapStatusFromDb(event.status),
       date: event.date.toISOString()
     }

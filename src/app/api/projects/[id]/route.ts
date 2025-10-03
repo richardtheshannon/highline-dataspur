@@ -32,10 +32,10 @@ export async function GET(
     const project = await prisma.project.findUnique({
       where: { id: params.id },
       include: {
-        owner: {
+        User: {
           select: { id: true, name: true, email: true }
         },
-        timelineEvents: {
+        TimelineEvent: {
           orderBy: { date: 'asc' }
         }
       }
@@ -51,11 +51,12 @@ export async function GET(
     // Convert timeline event status from database enum to frontend format
     const projectWithMappedStatus = {
       ...project,
-      timelineEvents: project.timelineEvents.map(event => ({
+      owner: project.User, // Map User relation to owner for frontend compatibility
+      timelineEvents: project.TimelineEvent?.map(event => ({
         ...event,
         status: mapStatusFromDb(event.status),
         date: event.date.toISOString()
-      }))
+      })) || []
     }
 
     return NextResponse.json(projectWithMappedStatus)
@@ -96,7 +97,7 @@ export async function PUT(
           endDate: endDate ? new Date(endDate) : null,
         },
         include: {
-          owner: {
+          User: {
             select: { id: true, name: true, email: true }
           }
         }
@@ -149,9 +150,10 @@ export async function PUT(
       date: event.date.toISOString()
     }))
 
-    return NextResponse.json({ 
-      ...project, 
-      timelineEvents: mappedTimelineEvents 
+    return NextResponse.json({
+      ...project,
+      owner: project.User, // Map User relation to owner for frontend compatibility
+      timelineEvents: mappedTimelineEvents
     })
   } catch (error) {
     console.error('Project PUT error:', error)
