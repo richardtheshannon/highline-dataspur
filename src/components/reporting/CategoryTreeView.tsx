@@ -183,6 +183,7 @@ export default function CategoryTreeView({
               ) : (
                 <>
                   <div className="flex items-center gap-2 flex-1">
+                    {expanded.includes(nodeId) ? <FolderOpen className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
                     <span>{node.name}</span>
                     {reportCount > 0 && (
                       <span className="text-xs text-gray-500">({reportCount})</span>
@@ -240,7 +241,6 @@ export default function CategoryTreeView({
               )}
             </div>
           }
-          icon={expanded.includes(nodeId) ? <FolderOpen className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
         >
           {creatingCategory === nodeId && (
             <div className="flex items-center gap-2 pl-6 py-2">
@@ -345,10 +345,12 @@ export default function CategoryTreeView({
           itemId="root"
           label={
             <div className="flex items-center justify-between py-1">
-              <span className="font-medium">All Reports</span>
+              <div className="flex items-center gap-2">
+                <Folder className="h-4 w-4" />
+                <span className="font-medium">All Reports</span>
+              </div>
             </div>
           }
-          icon={<Folder className="h-4 w-4" />}
         >
           {renderTree(tree)}
         </TreeItem>
