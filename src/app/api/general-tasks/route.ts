@@ -91,10 +91,12 @@ export async function POST(request: NextRequest) {
     // Create the task
     const task = await prisma.generalTask.create({
       data: {
+        id: crypto.randomUUID(),
         userId: user.id,
         title: title.trim(),
         description: description?.trim() || null,
-        dueDate: dueDate ? new Date(dueDate) : null
+        dueDate: dueDate ? new Date(dueDate) : null,
+        updatedAt: new Date()
       }
     })
 

@@ -68,12 +68,14 @@ export async function POST(request: NextRequest) {
     // Create the timeline event
     const newEvent = await prisma.timelineEvent.create({
       data: {
+        id: crypto.randomUUID(),
         title: body.title,
         description: body.description || null,
         date: body.date ? new Date(body.date) : new Date(),
         type: body.type,
         status: mappedStatus,
-        projectId: body.projectId
+        projectId: body.projectId,
+        updatedAt: new Date()
       }
     })
 

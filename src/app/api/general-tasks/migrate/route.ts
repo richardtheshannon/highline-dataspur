@@ -41,11 +41,13 @@ export async function POST(request: NextRequest) {
         task.title.trim().length > 0
       ) {
         validTasks.push({
+          id: crypto.randomUUID(),
           userId: user.id,
           title: task.title.trim(),
           description: typeof task.description === 'string' ? task.description.trim() || null : null,
           completed: Boolean(task.completed),
-          dueDate: task.dueDate ? new Date(task.dueDate) : null
+          dueDate: task.dueDate ? new Date(task.dueDate) : null,
+          updatedAt: new Date()
         })
       }
     }
