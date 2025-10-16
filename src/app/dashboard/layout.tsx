@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Header from '@/components/layout/header'
+import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
-import Footer from '@/components/layout/footer'
+import Footer from '@/components/layout/Footer'
 import HelpDocumentationProvider from '@/contexts/HelpDocumentationContext'
 import HelpDocumentationDrawer from '@/components/help/HelpDocumentationDrawer'
 

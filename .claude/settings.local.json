@@ -39,7 +39,9 @@
       "Bash(findstr:*)",
       "Bash(npm install:*)",
       "Bash(mkdir:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(ren:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []
