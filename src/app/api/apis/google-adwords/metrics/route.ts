@@ -153,12 +153,28 @@ export async function GET(request: NextRequest) {
 
     // Process cached data into metrics format
     console.log('[GoogleAdsMetrics] Processing cached data...')
+    console.log('[GoogleAdsMetrics] Campaigns data:', JSON.stringify(campaigns.map(c => ({
+      id: c.id,
+      campaignId: c.campaignId,
+      name: c.name,
+      status: c.status,
+      budget: c.budget,
+      metricsCount: c.GoogleAdsMetrics?.length || 0
+    }))))
     let metrics
     try {
       metrics = processCachedData(campaigns, timeRange, startDate, endDate)
       console.log('[GoogleAdsMetrics] Successfully processed cached data')
-    } catch (processingError) {
+      console.log('[GoogleAdsMetrics] Metrics result:', JSON.stringify({
+        monthlyBudget: metrics.monthlyBudget,
+        totalsKeys: Object.keys(metrics.totals),
+        campaignsCount: metrics.campaigns?.length || 0,
+        performanceDataLength: metrics.performanceData?.length || 0
+      }))
+    } catch (processingError: any) {
       console.error('[GoogleAdsMetrics] Error processing cached data:', processingError)
+      console.error('[GoogleAdsMetrics] Error stack:', processingError?.stack)
+      console.error('[GoogleAdsMetrics] Error message:', processingError?.message)
       throw processingError
     }
 
@@ -195,6 +211,11 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Google AdWords metrics error:', error)
+    console.error('Error type:', typeof error)
+    console.error('Error name:', error?.name)
+    console.error('Error message:', error?.message)
+    console.error('Error stack:', error?.stack)
+    console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
 
     // Try to log the error
     try {
@@ -225,7 +246,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to fetch metrics',
-        details: error.message || 'Unknown error occurred'
+        details: error.message || 'Unknown error occurred',
+        stack: error.stack || 'No stack trace'
       },
       { status: 500 }
     )
@@ -237,6 +259,17 @@ function processGoogleAdsData(campaigns: any[], timeRange: string) {
   const days = timeRange === '7d' ? 7 :
                timeRange === '30d' ? 30 :
                timeRange === '90d' ? 90 : 365
+
+  // Calculate monthly budget from campaign daily budgets
+  const monthlyBudget = campaigns.reduce((total, campaign) => {
+    if (campaign.status && String(campaign.status).toLowerCase() === 'enabled') {
+      const dailyBudget = campaign.budget || 0
+      const estimatedMonthly = dailyBudget * 30.44
+      return total + estimatedMonthly
+    }
+    return total
+  }, 0)
+  const roundedMonthlyBudget = Math.round(monthlyBudget * 100) / 100
 
   // Calculate totals from real campaign data
   const totals = campaigns.reduce((acc, campaign) => ({
@@ -348,7 +381,8 @@ function processGoogleAdsData(campaigns: any[], timeRange: string) {
     },
     performanceData,
     campaigns: formattedCampaigns,
-    comparison
+    comparison,
+    monthlyBudget: roundedMonthlyBudget
   }
 }
 
@@ -357,6 +391,23 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
   const days = timeRange === '7d' ? 7 :
                timeRange === '30d' ? 30 :
                timeRange === '90d' ? 90 : 365
+
+  // Calculate monthly budget from campaign daily budgets
+  // Only include enabled campaigns in the calculation
+  const monthlyBudget = campaigns.reduce((total, campaign) => {
+    // Only count enabled campaigns
+    if (campaign.status && campaign.status.toLowerCase() === 'enabled') {
+      const dailyBudget = campaign.budget || 0
+      const estimatedMonthly = dailyBudget * 30.44 // Average days per month
+      return total + estimatedMonthly
+    }
+    return total
+  }, 0)
+
+  // Round to 2 decimal places for currency
+  const roundedMonthlyBudget = Math.round(monthlyBudget * 100) / 100
+
+  console.log('[GoogleAdsMetrics] Calculated monthly budget from daily budgets:', roundedMonthlyBudget)
 
   // Create campaign-specific performance data first
   const campaignPerformanceData = new Map()
@@ -469,23 +520,25 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
 
   // Group metrics by date across all campaigns
   campaigns.forEach(campaign => {
-    campaign.GoogleAdsMetrics.forEach((metric: any) => {
-      const dateKey = metric.date.toISOString().split('T')[0]
-      if (!metricsMap.has(dateKey)) {
-        metricsMap.set(dateKey, {
-          date: dateKey,
-          impressions: 0,
-          clicks: 0,
-          conversions: 0,
-          cost: 0
-        })
-      }
-      const existing = metricsMap.get(dateKey)
-      existing.impressions += metric.impressions
-      existing.clicks += metric.clicks
-      existing.conversions += metric.conversions
-      existing.cost += metric.cost
-    })
+    if (campaign.GoogleAdsMetrics && Array.isArray(campaign.GoogleAdsMetrics)) {
+      campaign.GoogleAdsMetrics.forEach((metric: any) => {
+        const dateKey = metric.date.toISOString().split('T')[0]
+        if (!metricsMap.has(dateKey)) {
+          metricsMap.set(dateKey, {
+            date: dateKey,
+            impressions: 0,
+            clicks: 0,
+            conversions: 0,
+            cost: 0
+          })
+        }
+        const existing = metricsMap.get(dateKey)
+        existing.impressions += metric.impressions
+        existing.clicks += metric.clicks
+        existing.conversions += metric.conversions
+        existing.cost += metric.cost
+      })
+    }
   })
 
   // Convert to sorted array and calculate daily metrics
@@ -532,6 +585,7 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
     },
     performanceData,
     campaigns: formattedCampaigns,
-    comparison
+    comparison,
+    monthlyBudget: roundedMonthlyBudget
   }
 }

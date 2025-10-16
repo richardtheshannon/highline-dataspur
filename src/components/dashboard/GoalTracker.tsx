@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { goalTrackerDoc } from '@/data/helpDocumentation'
 
 interface CampaignGoal {
   campaignId: string
@@ -174,14 +176,13 @@ export default function GoalTracker({
     return (
       <div className="dashboard-card">
         <div className="card-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-              flag
-            </span>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-              Campaign Goals & Tracking
-            </h3>
-          </div>
+          <DocumentedTitle
+            className=""
+            icon="flag"
+            title="Campaign Goals & Tracking"
+            documentation={goalTrackerDoc}
+            as="h3"
+          />
         </div>
         <div className="card-content" style={{ padding: '2rem', textAlign: 'center' }}>
           <span className="material-symbols-outlined" style={{ fontSize: '2rem', color: 'var(--text-secondary)', animation: 'spin 1s linear infinite' }}>
@@ -196,14 +197,13 @@ export default function GoalTracker({
   return (
     <div className="dashboard-card">
       <div className="card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-            flag
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-            Campaign Goals & Tracking
-          </h3>
-        </div>
+        <DocumentedTitle
+          className=""
+          icon="flag"
+          title="Campaign Goals & Tracking"
+          documentation={goalTrackerDoc}
+          as="h3"
+        />
         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
           Set targets and track performance
         </div>

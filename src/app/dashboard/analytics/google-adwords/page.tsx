@@ -6,7 +6,14 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
-import { keyMetricsDoc, connectionStatusDoc, performanceTrendDoc } from '@/data/helpDocumentation'
+import {
+  keyMetricsDoc,
+  connectionStatusDoc,
+  performanceTrendDoc,
+  dataFreshnessDoc,
+  accountPerformanceDoc,
+  budgetPacingDoc
+} from '@/data/helpDocumentation'
 import { generateInsights, rankCampaigns } from '@/lib/adsInsightsEngine'
 import InsightsPanel from '@/components/dashboard/InsightsPanel'
 import CampaignComparisonTable from '@/components/dashboard/CampaignComparisonTable'
@@ -308,7 +315,7 @@ export default function GoogleAdWordsAnalytics() {
   })
 
   // Phase 1: Strategic Metrics State
-  const [monthlyBudget, setMonthlyBudget] = useState<number>(5000) // Default budget, can be made configurable
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(0) // Calculated from campaign goals
   const [targetCPA, setTargetCPA] = useState<number>(50) // Target Cost Per Acquisition
   const [targetROAS, setTargetROAS] = useState<number>(4) // Target Return on Ad Spend
 
@@ -374,6 +381,7 @@ export default function GoogleAdWordsAnalytics() {
       setCampaigns(metricsData.metrics.campaigns)
       setPerformanceData(metricsData.metrics.performanceData)
       setComparison(metricsData.metrics.comparison || {})
+      setMonthlyBudget(metricsData.metrics.monthlyBudget || 0)
     } catch (error) {
       console.error('Error fetching analytics data:', error)
     } finally {
@@ -728,14 +736,13 @@ export default function GoogleAdWordsAnalytics() {
           {/* Data Freshness & Refresh Controls */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-                  schedule
-                </span>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-                  Data Freshness
-                </h3>
-              </div>
+              <DocumentedTitle
+                className=""
+                icon="schedule"
+                title="Data Freshness"
+                documentation={dataFreshnessDoc}
+                as="h3"
+              />
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
@@ -869,14 +876,13 @@ export default function GoogleAdWordsAnalytics() {
           {/* Phase 1: Performance Score Card */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-                  dashboard
-                </span>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-                  Account Performance
-                </h3>
-              </div>
+              <DocumentedTitle
+                className=""
+                icon="dashboard"
+                title="Account Performance"
+                documentation={accountPerformanceDoc}
+                as="h3"
+              />
             </div>
             <div className="card-content" style={{ padding: '1.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', alignItems: 'center' }}>
@@ -966,34 +972,67 @@ export default function GoogleAdWordsAnalytics() {
           {/* Phase 1: Budget Pacing Widget */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-                  payments
-                </span>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-                  Budget Pacing
-                </h3>
-              </div>
-              <div style={{
-                padding: '0.25rem 0.75rem',
-                borderRadius: '12px',
-                fontSize: '0.75rem',
-                fontWeight: '500',
-                background: budgetPacing.pacingStatus === 'on-track' ? '#10b98120' :
-                           budgetPacing.pacingStatus === 'overspending' ? '#ef444420' : '#f59e0b20',
-                color: budgetPacing.pacingStatus === 'on-track' ? '#10b981' :
-                       budgetPacing.pacingStatus === 'overspending' ? '#ef4444' : '#f59e0b'
-              }}>
-                {budgetPacing.pacingStatus === 'on-track' ? '✓ On Track' :
-                 budgetPacing.pacingStatus === 'overspending' ? '⚠ Overspending' : '⚠ Underspending'}
-              </div>
+              <DocumentedTitle
+                className=""
+                icon="payments"
+                title="Budget Pacing"
+                documentation={budgetPacingDoc}
+                as="h3"
+              />
+              {monthlyBudget > 0 && (
+                <div style={{
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: '500',
+                  background: budgetPacing.pacingStatus === 'on-track' ? '#10b98120' :
+                             budgetPacing.pacingStatus === 'overspending' ? '#ef444420' : '#f59e0b20',
+                  color: budgetPacing.pacingStatus === 'on-track' ? '#10b981' :
+                         budgetPacing.pacingStatus === 'overspending' ? '#ef4444' : '#f59e0b'
+                }}>
+                  {budgetPacing.pacingStatus === 'on-track' ? '✓ On Track' :
+                   budgetPacing.pacingStatus === 'overspending' ? '⚠ Overspending' : '⚠ Underspending'}
+                </div>
+              )}
             </div>
             <div className="card-content" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Monthly Budget</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatCurrency(monthlyBudget)}</div>
+              {monthlyBudget === 0 ? (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  padding: '2rem',
+                  textAlign: 'center',
+                  background: 'var(--background-secondary)',
+                  borderRadius: '8px'
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--text-secondary)' }}>
+                    payments
+                  </span>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>No Active Campaigns with Budgets</h4>
+                    <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                      Budget pacing requires active campaigns with daily budgets configured in Google Ads. Once your campaigns are running with budgets set, this section will show your monthly spending trends.
+                    </p>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        Monthly Budget
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ fontSize: '0.875rem', cursor: 'help' }}
+                          title="Calculated from campaign daily budgets × 30.44 days (average month)"
+                        >
+                          info
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatCurrency(monthlyBudget)}</div>
+                    </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Spent This Month</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatCurrency(totals.cost)}</div>
@@ -1063,6 +1102,8 @@ export default function GoogleAdWordsAnalytics() {
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -1106,7 +1147,7 @@ export default function GoogleAdWordsAnalytics() {
           </div>
 
           {/* Phase 4: Goal Tracker */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div id="goal-tracker" style={{ marginBottom: '1.5rem' }}>
             <GoalTracker
               campaigns={enabledCampaigns}
               formatCurrency={formatCurrency}

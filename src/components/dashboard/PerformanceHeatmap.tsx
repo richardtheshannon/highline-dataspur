@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { performanceHeatmapDoc } from '@/data/helpDocumentation'
 
 interface PerformanceData {
   date: string
@@ -136,14 +138,13 @@ const PerformanceHeatmap: React.FC<PerformanceHeatmapProps> = ({ data, formatNum
   return (
     <div className="dashboard-card">
       <div className="card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-            calendar_view_week
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-            Day-of-Week Performance
-          </h3>
-        </div>
+        <DocumentedTitle
+          className=""
+          icon="calendar_view_week"
+          title="Day-of-Week Performance"
+          documentation={performanceHeatmapDoc}
+          as="h3"
+        />
         {/* Metric Selector */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {metricOptions.map(option => (

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import DateRangePicker from './DateRangePicker'
 import { downloadPDFReport } from '@/lib/pdfReportGenerator'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { exportReportingDoc } from '@/data/helpDocumentation'
 
 interface ExportPanelProps {
   campaigns: any[]
@@ -119,14 +121,13 @@ export default function ExportPanel({
     <div className="export-panel">
       {/* Header */}
       <div className="panel-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-            download
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-            Export & Reporting
-          </h3>
-        </div>
+        <DocumentedTitle
+          className=""
+          icon="download"
+          title="Export & Reporting"
+          documentation={exportReportingDoc}
+          as="h3"
+        />
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="icon-btn"

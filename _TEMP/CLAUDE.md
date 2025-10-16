@@ -13,7 +13,7 @@
 - **Database**: PostgreSQL (local: `hla-dataspur`, production: Railway)
 
 ### Latest Update (2025-10-16)
-**Phase 5: Google Ads Export & Reporting** - Complete 5-phase Strategic Command Center with CSV/PDF export, custom date ranges, and full data portability.
+**Budget Pacing Enhancement** - Switched from manual Goals-based budgets to automatic calculation from Google Ads API daily campaign budgets (daily × 30.44 = monthly estimate). Budget Pacing now auto-updates when campaign budgets change in Google Ads.
 
 ## Quick Commands
 ```bash
@@ -190,11 +190,12 @@ src/
 - Cache-first architecture (90%+ API call reduction)
 - Historical data sync (daily granularity, 1-5+ years)
 - Real-time performance scoring
-- Budget pacing with overspend/underspend alerts
+- **Budget pacing with auto-calculated monthly budgets** (from campaign daily budgets × 30.44)
+- Overspend/underspend alerts with pacing status
 - Automated insights with priority ranking (1-10)
 - Day-of-week performance patterns
 - Conversion funnel bottleneck detection
-- Goal progress visualization
+- Goal progress visualization (optional)
 - CSV export (with optional goals)
 - PDF report generation (client-side, <1s)
 - Custom date range selection
@@ -281,6 +282,11 @@ GITHUB_CLIENT_SECRET="your-github-client-secret"
 - Developer token must be Google-approved
 - Check `/api/apis/google-adwords/activities` for error logs
 - Use browser console at config page for manual sync
+- **Budget Pacing**: Monthly budgets calculated from campaign daily budgets
+  - Formula: `Sum(campaign.budget × 30.44)` for enabled campaigns
+  - Only counts campaigns with status = 'enabled'
+  - Updates automatically when Google Ads budgets change
+  - No manual configuration needed
 
 ### Common Patterns
 **Fetching User Data**:
@@ -305,6 +311,39 @@ const campaigns = await prisma.googleAdsCampaign.findMany({
   include: { GoogleAdsCampaignGoal: true } // Note capital letters
 })
 ```
+
+## Recent Changes (2025-10-16)
+
+### Budget Pacing API-Based Calculation
+**Changed**: Budget Pacing now uses Google Ads API campaign budgets instead of manual Goals.
+
+**Implementation Details**:
+1. **Metrics API Endpoint** (`/api/apis/google-adwords/metrics`)
+   - Added monthly budget calculation in both `processCachedData()` and `processGoogleAdsData()`
+   - Formula: `monthlyBudget = Sum(campaign.budget × 30.44)` for enabled campaigns
+   - Returns `monthlyBudget` field in response
+   - Removed `GoogleAdsCampaignGoal` from query (no longer needed for budget calculation)
+
+2. **Dashboard Page** (`/dashboard/analytics/google-adwords`)
+   - Changed initial state from hardcoded `5000` to `0`
+   - Extracts `monthlyBudget` from API response
+   - Added info tooltip: "Calculated from campaign daily budgets × 30.44 days (average month)"
+   - Updated empty state message for when no campaigns exist
+
+3. **Benefits**:
+   - ✅ Real-time sync with Google Ads budget changes
+   - ✅ No manual user configuration required
+   - ✅ Always accurate (based on actual campaign settings)
+   - ✅ Transparent calculation (tooltip explains method)
+
+4. **Files Modified**:
+   - `src/app/api/apis/google-adwords/metrics/route.ts` (~30 lines changed)
+   - `src/app/dashboard/analytics/google-adwords/page.tsx` (~15 lines changed)
+
+**Why 30.44 days?**
+Average days per month = 365.25 ÷ 12 = 30.4375 (rounded to 30.44)
+
+**Note**: Goals feature (`GoogleAdsCampaignGoal.monthlyBudget`) still exists and can be used for campaign-specific target setting, but Budget Pacing now uses API data for the account-level view.
 
 ## Troubleshooting
 

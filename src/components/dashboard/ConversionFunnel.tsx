@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { conversionFunnelDoc } from '@/data/helpDocumentation'
 
 interface ConversionFunnelProps {
   totalImpressions: number
@@ -50,14 +52,13 @@ const ConversionFunnel: React.FC<ConversionFunnelProps> = ({
   return (
     <div className="dashboard-card">
       <div className="card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-            filter_alt
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-            Conversion Funnel Analysis
-          </h3>
-        </div>
+        <DocumentedTitle
+          className=""
+          icon="filter_alt"
+          title="Conversion Funnel Analysis"
+          documentation={conversionFunnelDoc}
+          as="h3"
+        />
         {/* Efficiency Badge */}
         <div style={{
           padding: '0.25rem 0.75rem',

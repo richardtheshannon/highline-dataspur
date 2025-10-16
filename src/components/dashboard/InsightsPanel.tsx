@@ -1,5 +1,7 @@
 import React from 'react'
 import { Insight } from '@/lib/adsInsightsEngine'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { smartInsightsDoc } from '@/data/helpDocumentation'
 
 interface InsightsPanelProps {
   insights: Insight[]
@@ -11,14 +13,13 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ insights, onInsightClick 
     return (
       <div className="dashboard-card">
         <div className="card-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-              lightbulb
-            </span>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-              Smart Insights
-            </h3>
-          </div>
+          <DocumentedTitle
+            className=""
+            icon="lightbulb"
+            title="Smart Insights"
+            documentation={smartInsightsDoc}
+            as="h3"
+          />
         </div>
         <div className="card-content" style={{ padding: '2rem', textAlign: 'center' }}>
           <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--text-secondary)', opacity: 0.5 }}>
@@ -76,14 +77,13 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ insights, onInsightClick 
   return (
     <div className="dashboard-card">
       <div className="card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-            lightbulb
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-            Smart Insights
-          </h3>
-        </div>
+        <DocumentedTitle
+          className=""
+          icon="lightbulb"
+          title="Smart Insights"
+          documentation={smartInsightsDoc}
+          as="h3"
+        />
         <div style={{
           padding: '0.25rem 0.75rem',
           borderRadius: '12px',

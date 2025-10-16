@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import DocumentedTitle from '@/components/help/DocumentedTitle'
+import { multiMetricTrendDoc } from '@/data/helpDocumentation'
 
 interface PerformanceData {
   date: string
@@ -124,14 +126,13 @@ const MultiMetricChart: React.FC<MultiMetricChartProps> = ({ data, formatNumber,
   return (
     <div className="dashboard-card">
       <div className="card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
-            show_chart
-          </span>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-            Multi-Metric Trend Analysis
-          </h3>
-        </div>
+        <DocumentedTitle
+          className=""
+          icon="show_chart"
+          title="Multi-Metric Trend Analysis"
+          documentation={multiMetricTrendDoc}
+          as="h3"
+        />
         {/* Metric Toggle Buttons */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {metrics.map(metric => (
