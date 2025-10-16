@@ -469,7 +469,7 @@ function processCachedData(campaigns: any[], timeRange: string, startDate: Date,
 
   // Group metrics by date across all campaigns
   campaigns.forEach(campaign => {
-    campaign.metrics.forEach((metric: any) => {
+    campaign.GoogleAdsMetrics.forEach((metric: any) => {
       const dateKey = metric.date.toISOString().split('T')[0]
       if (!metricsMap.has(dateKey)) {
         metricsMap.set(dateKey, {

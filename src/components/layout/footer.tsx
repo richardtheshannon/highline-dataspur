@@ -116,10 +116,13 @@ export default function Footer() {
               <span className="material-symbols-outlined">task_alt</span>
               <span>New Task</span>
             </a>
-            <button className="drawer-action">
-              <span className="material-symbols-outlined">note_add</span>
-              <span>New Note</span>
-            </button>
+            <a
+              href="/dashboard/general-tasks"
+              className="drawer-action"
+            >
+              <span className="material-symbols-outlined">checklist</span>
+              <span>General Tasks</span>
+            </a>
             <button className="drawer-action">
               <span className="material-symbols-outlined">upload_file</span>
               <span>Upload File</span>

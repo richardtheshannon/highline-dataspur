@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Header from '@/components/layout/header'
-import Sidebar from '@/components/layout/sidebar'
+import Sidebar from '@/components/layout/Sidebar'
 import Footer from '@/components/layout/footer'
 import HelpDocumentationProvider from '@/contexts/HelpDocumentationContext'
 import HelpDocumentationDrawer from '@/components/help/HelpDocumentationDrawer'

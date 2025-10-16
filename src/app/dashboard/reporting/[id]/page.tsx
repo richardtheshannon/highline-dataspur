@@ -461,111 +461,11 @@ export default function ReportViewerPage() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Main content if no sections */}
-          {(!report.sections || report.sections.length === 0) && (
-            <div
-              className="prose dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: report.content }}
-            />
-          )}
-
-          {/* Sections */}
-          {report.sections && report.sections
-            .sort((a, b) => a.order - b.order)
-            .map((section) => {
-              const isCollapsed = collapsedSections.has(section.id);
-              const showContent = !isCollapsed || editingSectionId === section.id;
-
-              return (
-                <div
-                  key={section.id}
-                  className={`mb-6 border rounded-lg transition-all duration-200 ${
-                    section.isComplete
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                  }`}
-                >
-                  <div className={`flex items-center justify-between p-4 ${showContent ? 'border-b border-gray-200 dark:border-gray-700' : ''}`}>
-                    <div className="flex items-center gap-2 flex-1">
-                      <h2 className="text-lg font-semibold flex items-center gap-2">
-                        {section.isComplete ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <Circle className="h-5 w-5 text-gray-400" />
-                        )}
-                        {section.heading}
-                      </h2>
-                      {section.isComplete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleSectionCollapse(section.id)}
-                          className="flex items-center gap-1 ml-2"
-                        >
-                          {isCollapsed ? (
-                            <>
-                              <ChevronDown className="h-4 w-4" />
-                              Expand
-                            </>
-                          ) : (
-                            <>
-                              <ChevronUp className="h-4 w-4" />
-                              Collapse
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {editingSectionId !== section.id && showContent && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditSection(section.id)}
-                          className="flex items-center gap-2"
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                      )}
-                      <Button
-                        variant={section.isComplete ? 'outline' : 'default'}
-                        size="sm"
-                        onClick={() => toggleSectionComplete(section.id)}
-                        disabled={editingSectionId === section.id}
-                      >
-                        {section.isComplete ? 'Mark Incomplete' : 'Mark Complete'}
-                      </Button>
-                    </div>
-                  </div>
-                  {showContent && (
-                    <>
-                      {editingSectionId === section.id ? (
-                        <div className="p-4">
-                          <SectionEditor
-                            sectionId={section.id}
-                            initialContent={section.content}
-                            onSave={(content) => handleSaveSection(section.id, content)}
-                            onCancel={handleCancelEdit}
-                            autoSaveDelay={3000}
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className="p-4 prose dark:prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{ __html: section.content }}
-                        />
-                      )}
-                      {section.isComplete && section.completedAt && (
-                        <div className="px-4 pb-3 text-xs text-gray-500">
-                          Completed {formatDistanceToNow(new Date(section.completedAt), { addSuffix: true })}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
+          {/* Display the full report content as HTML */}
+          <div
+            className="prose dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: report.content }}
+          />
         </div>
       </div>
     </div>

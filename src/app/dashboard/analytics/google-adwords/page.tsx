@@ -7,6 +7,14 @@ import Link from 'next/link'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts'
 import DocumentedTitle from '@/components/help/DocumentedTitle'
 import { keyMetricsDoc, connectionStatusDoc, performanceTrendDoc } from '@/data/helpDocumentation'
+import { generateInsights, rankCampaigns } from '@/lib/adsInsightsEngine'
+import InsightsPanel from '@/components/dashboard/InsightsPanel'
+import CampaignComparisonTable from '@/components/dashboard/CampaignComparisonTable'
+import MultiMetricChart from '@/components/dashboard/MultiMetricChart'
+import PerformanceHeatmap from '@/components/dashboard/PerformanceHeatmap'
+import ConversionFunnel from '@/components/dashboard/ConversionFunnel'
+import GoalTracker from '@/components/dashboard/GoalTracker'
+import ExportPanel from '@/components/dashboard/ExportPanel'
 
 interface Campaign {
   id: string
@@ -299,6 +307,11 @@ export default function GoogleAdWordsAnalytics() {
     cpa: 0
   })
 
+  // Phase 1: Strategic Metrics State
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(5000) // Default budget, can be made configurable
+  const [targetCPA, setTargetCPA] = useState<number>(50) // Target Cost Per Acquisition
+  const [targetROAS, setTargetROAS] = useState<number>(4) // Target Return on Ad Spend
+
   useEffect(() => {
     if (session?.user) {
       checkConnectionStatus()
@@ -411,6 +424,82 @@ export default function GoogleAdWordsAnalytics() {
     if (diffDays < 7) return `${diffDays}d ago`
 
     return then.toLocaleDateString()
+  }
+
+  // Phase 1: Performance Score Calculation (0-100)
+  const calculatePerformanceScore = (): number => {
+    let score = 0
+    let factors = 0
+
+    // Factor 1: CTR Performance (0-25 points)
+    // Good CTR is typically 2%+, excellent is 5%+
+    if (totals.ctr > 0) {
+      const ctrScore = Math.min((totals.ctr / 5) * 25, 25)
+      score += ctrScore
+      factors++
+    }
+
+    // Factor 2: Conversion Rate Performance (0-25 points)
+    // Good CVR is typically 2%+, excellent is 5%+
+    if (totals.conversionRate > 0) {
+      const cvrScore = Math.min((totals.conversionRate / 5) * 25, 25)
+      score += cvrScore
+      factors++
+    }
+
+    // Factor 3: CPA Performance (0-25 points)
+    // Score higher if CPA is below target
+    if (totals.cpa > 0 && targetCPA > 0) {
+      const cpaRatio = targetCPA / totals.cpa
+      const cpaScore = Math.min(cpaRatio * 25, 25)
+      score += cpaScore
+      factors++
+    }
+
+    // Factor 4: Budget Utilization (0-25 points)
+    // Score based on efficient budget usage (not overspending or underspending)
+    const budgetPacing = getBudgetPacing()
+    if (budgetPacing.percentSpent > 0) {
+      // Ideal is to be within 5% of target pace
+      const pacingDiff = Math.abs(budgetPacing.percentSpent - budgetPacing.percentElapsed)
+      const pacingScore = Math.max(25 - pacingDiff * 2, 0)
+      score += pacingScore
+      factors++
+    }
+
+    // Return average score if we have factors, otherwise 0
+    return factors > 0 ? Math.round(score / factors * 4) : 0
+  }
+
+  // Phase 1: Budget Pacing Calculations
+  const getBudgetPacing = () => {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const totalDays = endOfMonth.getDate()
+    const elapsedDays = now.getDate()
+    const percentElapsed = (elapsedDays / totalDays) * 100
+    const percentSpent = monthlyBudget > 0 ? (totals.cost / monthlyBudget) * 100 : 0
+    const projectedSpend = elapsedDays > 0 ? (totals.cost / elapsedDays) * totalDays : 0
+    const pacingStatus =
+      percentSpent > percentElapsed + 10 ? 'overspending' :
+      percentSpent < percentElapsed - 10 ? 'underspending' : 'on-track'
+
+    return {
+      percentElapsed: Math.round(percentElapsed),
+      percentSpent: Math.round(percentSpent),
+      projectedSpend: Math.round(projectedSpend),
+      remainingBudget: monthlyBudget - totals.cost,
+      pacingStatus
+    }
+  }
+
+  // Phase 1: Get Performance Status Color
+  const getPerformanceStatus = (score: number) => {
+    if (score >= 75) return { color: '#10b981', label: 'Excellent', icon: 'trending_up' }
+    if (score >= 60) return { color: '#3b82f6', label: 'Good', icon: 'thumb_up' }
+    if (score >= 40) return { color: '#f59e0b', label: 'Fair', icon: 'warning' }
+    return { color: '#ef4444', label: 'Needs Attention', icon: 'trending_down' }
   }
 
   const getDataFreshnessIndicator = () => {
@@ -569,14 +658,23 @@ export default function GoogleAdWordsAnalytics() {
     )
   }
 
+  // Calculate Phase 1 metrics
+  const performanceScore = calculatePerformanceScore()
+  const performanceStatus = getPerformanceStatus(performanceScore)
+  const budgetPacing = getBudgetPacing()
+
+  // Phase 2: Generate Insights and Rankings
+  const insights = generateInsights(campaigns, totals, targetCPA, monthlyBudget)
+  const campaignRankings = rankCampaigns(campaigns)
+
   return (
     <div className="safe-margin">
-      {/* Two Column Layout like Home Dashboard */}
+      {/* Two Column Layout: Sidebar Left, Main Content Right */}
       <div className="grid grid-cols-3 gap-6 items-start" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'start', gap: '1.5rem' }}>
-        
+
         {/* Left Column - Metrics Cards and Campaign List */}
         <div className="main-content-left">
-          
+
           {/* Page Header Card */}
           <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
             <div className="card-content" style={{ padding: '1.5rem' }}>
@@ -766,8 +864,276 @@ export default function GoogleAdWordsAnalytics() {
 
         </div>
 
-        {/* Right Column - Top 2 Campaign Cards */}
+        {/* Right Column - Main Content Area */}
         <div className="main-content-right">
+          {/* Phase 1: Performance Score Card */}
+          <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
+                  dashboard
+                </span>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
+                  Account Performance
+                </h3>
+              </div>
+            </div>
+            <div className="card-content" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', alignItems: 'center' }}>
+                {/* Performance Score Circle */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '50%',
+                    background: `conic-gradient(${performanceStatus.color} ${performanceScore * 3.6}deg, var(--border-color) 0deg)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <div style={{
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '50%',
+                      background: 'var(--card-bg)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <span style={{ fontSize: '2rem', fontWeight: '700', color: performanceStatus.color }}>
+                        {performanceScore}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>/ 100</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: performanceStatus.color }}>
+                        {performanceStatus.icon}
+                      </span>
+                      <span style={{ fontSize: '1rem', fontWeight: '600', color: performanceStatus.color }}>
+                        {performanceStatus.label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Performance Indicators Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--background-secondary)',
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${totals.ctr >= 2 ? '#10b981' : '#f59e0b'}`
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Click Rate</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatPercentage(totals.ctr)}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                      {totals.ctr >= 2 ? '✓ Above 2%' : '⚠ Below target'}
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--background-secondary)',
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${totals.conversionRate >= 2 ? '#10b981' : '#f59e0b'}`
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Conv. Rate</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatPercentage(totals.conversionRate)}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                      {totals.conversionRate >= 2 ? '✓ Above 2%' : '⚠ Below target'}
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--background-secondary)',
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${totals.cpa <= targetCPA ? '#10b981' : '#ef4444'}`
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>CPA vs Target</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatCurrency(totals.cpa)}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                      Target: {formatCurrency(targetCPA)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 1: Budget Pacing Widget */}
+          <div className="dashboard-card" style={{ marginBottom: '1.5rem' }}>
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: 'var(--accent)' }}>
+                  payments
+                </span>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)' }}>
+                  Budget Pacing
+                </h3>
+              </div>
+              <div style={{
+                padding: '0.25rem 0.75rem',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                background: budgetPacing.pacingStatus === 'on-track' ? '#10b98120' :
+                           budgetPacing.pacingStatus === 'overspending' ? '#ef444420' : '#f59e0b20',
+                color: budgetPacing.pacingStatus === 'on-track' ? '#10b981' :
+                       budgetPacing.pacingStatus === 'overspending' ? '#ef4444' : '#f59e0b'
+              }}>
+                {budgetPacing.pacingStatus === 'on-track' ? '✓ On Track' :
+                 budgetPacing.pacingStatus === 'overspending' ? '⚠ Overspending' : '⚠ Underspending'}
+              </div>
+            </div>
+            <div className="card-content" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Monthly Budget</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatCurrency(monthlyBudget)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Spent This Month</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>{formatCurrency(totals.cost)}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                    {budgetPacing.percentSpent}% of budget
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Projected Spend</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: budgetPacing.projectedSpend > monthlyBudget ? '#ef4444' : 'var(--text-primary)' }}>
+                    {formatCurrency(budgetPacing.projectedSpend)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                    End of month
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Remaining Budget</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: budgetPacing.remainingBudget < 0 ? '#ef4444' : '#10b981' }}>
+                    {formatCurrency(budgetPacing.remainingBudget)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                    {Math.round((budgetPacing.remainingBudget / monthlyBudget) * 100)}% remaining
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Progress Bars */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Time Elapsed</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-primary)' }}>{budgetPacing.percentElapsed}%</span>
+                  </div>
+                  <div style={{
+                    height: '8px',
+                    background: 'var(--border-color)',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${budgetPacing.percentElapsed}%`,
+                      background: '#3b82f6',
+                      transition: 'width 0.3s ease'
+                    }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Budget Spent</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-primary)' }}>{budgetPacing.percentSpent}%</span>
+                  </div>
+                  <div style={{
+                    height: '8px',
+                    background: 'var(--border-color)',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(budgetPacing.percentSpent, 100)}%`,
+                      background: budgetPacing.pacingStatus === 'on-track' ? '#10b981' :
+                                budgetPacing.pacingStatus === 'overspending' ? '#ef4444' : '#f59e0b',
+                      transition: 'width 0.3s ease'
+                    }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase 2: Insights Panel */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <InsightsPanel insights={insights} />
+          </div>
+
+          {/* Phase 2: Campaign Comparison Table */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <CampaignComparisonTable rankings={campaignRankings} />
+          </div>
+
+          {/* Phase 3: Multi-Metric Trend Chart */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <MultiMetricChart
+              data={performanceData}
+              formatNumber={formatNumber}
+              formatCurrency={formatCurrency}
+            />
+          </div>
+
+          {/* Phase 3: Performance Heatmap */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <PerformanceHeatmap
+              data={performanceData}
+              formatNumber={formatNumber}
+              formatCurrency={formatCurrency}
+            />
+          </div>
+
+          {/* Phase 3: Conversion Funnel */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <ConversionFunnel
+              totalImpressions={totals.impressions}
+              totalClicks={totals.clicks}
+              totalConversions={totals.conversions}
+              formatNumber={formatNumber}
+              formatPercentage={formatPercentage}
+            />
+          </div>
+
+          {/* Phase 4: Goal Tracker */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <GoalTracker
+              campaigns={enabledCampaigns}
+              formatCurrency={formatCurrency}
+              formatPercentage={formatPercentage}
+              formatNumber={formatNumber}
+            />
+          </div>
+
+          {/* Phase 5: Export & Reporting */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <ExportPanel
+              campaigns={enabledCampaigns}
+              totals={totals}
+              performanceScore={performanceScore}
+              performanceStatus={performanceStatus}
+              budgetPacing={{
+                monthlyBudget,
+                percentSpent: budgetPacing.percentSpent,
+                projectedSpend: budgetPacing.projectedSpend,
+                remainingBudget: budgetPacing.remainingBudget,
+                pacingStatus: budgetPacing.pacingStatus
+              }}
+              timeRange={timeRange}
+            />
+          </div>
+
+          {/* Campaign Performance Cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {enabledCampaigns.slice(0, 2).map((campaign, index) => (
               <CampaignPerformanceCard

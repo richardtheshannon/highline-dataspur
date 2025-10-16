@@ -61,21 +61,38 @@ model GeneralTask {
 }
 
 model GoogleAdsCampaign {
-  id               String             @id
-  apiConfigId      String
-  campaignId       String
-  name             String
-  status           String
-  budget           Float?
-  startDate        DateTime?
-  endDate          DateTime?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  lastSyncAt       DateTime           @default(now())
-  ApiConfiguration ApiConfiguration   @relation(fields: [apiConfigId], references: [id], onDelete: Cascade)
-  GoogleAdsMetrics GoogleAdsMetrics[]
+  id                    String                  @id
+  apiConfigId           String
+  campaignId            String
+  name                  String
+  status                String
+  budget                Float?
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime
+  lastSyncAt            DateTime                @default(now())
+  ApiConfiguration      ApiConfiguration        @relation(fields: [apiConfigId], references: [id], onDelete: Cascade)
+  GoogleAdsMetrics      GoogleAdsMetrics[]
+  GoogleAdsCampaignGoal GoogleAdsCampaignGoal?
 
   @@unique([apiConfigId, campaignId])
+}
+
+model GoogleAdsCampaignGoal {
+  id                String            @id
+  campaignId        String            @unique
+  targetCPA         Float?
+  targetROAS        Float?
+  dailyBudget       Float?
+  monthlyBudget     Float?
+  targetCTR         Float?
+  targetCVR         Float?
+  targetConversions Int?
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  GoogleAdsCampaign GoogleAdsCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
 model GoogleAdsMetrics {

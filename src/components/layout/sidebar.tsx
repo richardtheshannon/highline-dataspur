@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
     subItems: [
       { title: 'Project Management', icon: 'folder_open', href: '/dashboard/projects' },
       { title: 'Reporting Projects', icon: 'description', href: '/dashboard/reporting' },
+      { title: 'General Tasks', icon: 'checklist', href: '/dashboard/general-tasks' },
     ],
   },
   {
